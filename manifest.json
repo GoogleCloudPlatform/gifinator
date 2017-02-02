@@ -1,5 +1,8 @@
 {
     "dependencies": {
+        "cloud.google.com/go": {
+            "version": "^0.6.0"
+        },
         "github.com/golang/protobuf": {
             "branch": "master"
         },
