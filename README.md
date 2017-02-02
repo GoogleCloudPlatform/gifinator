@@ -8,7 +8,7 @@ Currently assuming an import path of `github.com/GoogleCloudPlatform/k8s-render-
 
 ```bash
 git clone ... $GOPATH/src/github.com/GoogleCloudPlatform/k8s-render-demo
-go get -u github.com/golang/dep
+go get -u github.com/golang/dep/cmd/dep
 ```
 
 ### Building
