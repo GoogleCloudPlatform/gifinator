@@ -1,0 +1,22 @@
+syntax = "proto3";
+
+package renderdemo;
+
+option go_package = "renderdemo";
+
+service Sequencer {
+  rpc MakeMovie (MakeMovieRequest) returns (MakeMovieResponse);
+}
+
+message MakeMovieRequest {
+  // GCS path to write output movie to.
+  string gcs_output = 1;
+
+  // GCS paths to frames, in sequence.
+  repeated string frames = 2;
+}
+
+message MakeMovieResponse {
+  // empty for now, successful response means movie was written to GCS.
+}
+

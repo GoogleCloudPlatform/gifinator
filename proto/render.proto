@@ -1,0 +1,20 @@
+syntax = "proto3";
+
+package renderdemo;
+
+option go_package = "renderdemo";
+
+service Render {
+  rpc RenderFrame (RenderRequest) returns (RenderResponse);
+}
+
+message RenderRequest {
+  // GCS path to write output image into.
+  string gcs_output = 1;
+
+  // TODO(light): scene description
+}
+
+message RenderResponse {
+  // empty for now, successful response means image was written to GCS.
+}

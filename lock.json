@@ -1,0 +1,32 @@
+{
+    "memo": "76828034af0593d3bf68294321e87a2cb63417777e7693726d55d58c1a5ffe61",
+    "projects": [
+        {
+            "name": "github.com/golang/protobuf",
+            "branch": "master",
+            "revision": "8ee79997227bf9b34611aee7946ae64735e6fd93",
+            "packages": [
+                "proto"
+            ]
+        },
+        {
+            "name": "golang.org/x/net",
+            "branch": "master",
+            "revision": "9773060888fba93b172cedcd70127db1ab739bd1",
+            "packages": [
+                "context",
+                "http2",
+                "http2/hpack",
+                "trace"
+            ]
+        },
+        {
+            "name": "google.golang.org/grpc",
+            "branch": "master",
+            "revision": "708a7f9f3283aa2d4f6132d287d78683babe55c8",
+            "packages": [
+                "."
+            ]
+        }
+    ]
+}

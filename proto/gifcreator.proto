@@ -1,0 +1,18 @@
+syntax = "proto3";
+
+package renderdemo;
+
+option go_package = "renderdemo";
+
+service GifCreator {
+  rpc CreateGif (GifRequest) returns (GifResponse);
+}
+
+message GifRequest {
+  // TODO(light): what scene parameters do we want to give?
+}
+
+message GifResponse {
+  // World-readable URL for created image.
+  string image_url = 1;
+}

@@ -1,0 +1,13 @@
+{
+    "dependencies": {
+        "github.com/golang/protobuf": {
+            "branch": "master"
+        },
+        "golang.org/x/net": {
+            "branch": "master"
+        },
+        "google.golang.org/grpc": {
+            "branch": "master"
+        }
+    }
+}
