@@ -1,0 +1,31 @@
+{{define "title"}}Create your GCP Next 2017 Gif!{{end}}
+
+{{define "body"}}
+  <h1>Create your GCP Next 2017 Gif!</h1>
+
+  <ul class="errorBox">
+  {{range .}}
+    <li>{{.}}</li>
+  {{end}}
+  </ul>
+
+  <form method="POST" action="/">
+    <fieldset>
+      <section>
+        <label for="input#name">Your name</label>
+        <input name="name" id="name" type="text"></input>
+      </section>
+      <section>
+        <label for="input#name">Which mascot should represent you</label>
+        <input name="mascot" value="go" id="mascot" type="radio">Go</input>
+        <input name="mascot" value="grpc" id="mascot" type="radio">gRPC</input>
+        <input name="mascot" value="kubernetes" id="mascot" type="radio">Kubernetes</input>
+      </section>
+      <section>
+        <input type="submit" value="Create!"></input>
+      </section>
+    </fieldset>
+  </form>
+</body>
+</html>
+{{end}}

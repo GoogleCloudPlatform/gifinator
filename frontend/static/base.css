@@ -1,0 +1,35 @@
+html {
+  background: #eee;
+}
+
+body {
+  margin: 20px;
+  background: white;
+  padding: 20px;
+  font-family: Ariel, sans-serif;
+}
+
+fieldset {
+  margin: 20px;
+  border: none;
+  background: aliceblue
+}
+
+section {
+  display: block;
+  clear: both;
+  margin: 10px 0px;
+}
+
+label {
+  width: 40%;
+  display: block;
+  font-weight: bold;
+  color: #999;
+  margin-bottom: 10px;
+}
+
+ul.errorBox {
+  background:#f3e8ea;
+  border: 1px solid crimson;
+}
