@@ -2,3 +2,5 @@ gifcreator/gifcreator
 movie/movie
 render/render
 vendor/
+.DS_Sore
+Vagrantfile
