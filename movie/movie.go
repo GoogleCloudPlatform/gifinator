@@ -11,6 +11,8 @@ import (
 	"image/png"
 	"log"
 	"net"
+	"os"
+	"strconv"
 
 	"cloud.google.com/go/storage"
 	"github.com/GoogleCloudPlatform/k8s-render-demo/internal/gcsref"
@@ -93,11 +95,16 @@ func loadFrame(ctx context.Context, client *storage.Client, uri string) (image.I
 }
 
 func main() {
+	serving_port := os.Getenv("MOVIE_PORT")
+	i, err := strconv.Atoi(serving_port)
+	if (err != nil) || (i < 1) {
+		log.Fatalf("please set env var MOVIE_PORT to a valid port")
+	}
 	gcs, err := storage.NewClient(context.Background())
 	if err != nil {
 		log.Fatalf("dial storage: %v", err)
 	}
-	l, err := net.Listen("tcp", ":8080")
+	l, err := net.Listen("tcp", ":"+serving_port)
 	if err != nil {
 		log.Fatalf("listen failed: %v", err)
 	}

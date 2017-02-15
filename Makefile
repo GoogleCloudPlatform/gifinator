@@ -15,6 +15,8 @@ run:
 	export FRONTEND_PORT=8080; \
 	export FRONTEND_TEMPLATES_DIR=frontend/templates; \
 	export FRONTEND_STATIC_DIR=frontend/static; \
-	go run frontend/*
+	export MOVIE_PORT=9080; \
+	go run frontend/*; \
+	go run movie/movie.go
 
 .PHONY: all proto clean
