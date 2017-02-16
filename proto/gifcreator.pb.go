@@ -11,8 +11,10 @@ It is generated from these files:
 	proto/render.proto
 
 It has these top-level messages:
-	GifRequest
-	GifResponse
+	StartJobRequest
+	StartJobResponse
+	GetJobRequest
+	GetJobResponse
 	MakeMovieRequest
 	MakeMovieResponse
 	RenderRequest
@@ -40,25 +42,133 @@ var _ = math.Inf
 // proto package needs to be updated.
 const _ = proto.ProtoPackageIsVersion2 // please upgrade the proto package
 
-type GifRequest struct {
+type Product int32
+
+const (
+	Product_UNKNOWN_PRODUCT Product = 0
+	Product_GRPC            Product = 1
+	Product_KUBERNETES      Product = 2
+	Product_GO              Product = 3
+)
+
+var Product_name = map[int32]string{
+	0: "UNKNOWN_PRODUCT",
+	1: "GRPC",
+	2: "KUBERNETES",
+	3: "GO",
+}
+var Product_value = map[string]int32{
+	"UNKNOWN_PRODUCT": 0,
+	"GRPC":            1,
+	"KUBERNETES":      2,
+	"GO":              3,
 }
 
-func (m *GifRequest) Reset()                    { *m = GifRequest{} }
-func (m *GifRequest) String() string            { return proto.CompactTextString(m) }
-func (*GifRequest) ProtoMessage()               {}
-func (*GifRequest) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{0} }
+func (x Product) String() string {
+	return proto.EnumName(Product_name, int32(x))
+}
+func (Product) EnumDescriptor() ([]byte, []int) { return fileDescriptor0, []int{0} }
 
-type GifResponse struct {
+type GetJobResponse_Status int32
+
+const (
+	GetJobResponse_UNKNOWN_STATUS GetJobResponse_Status = 0
+	GetJobResponse_PENDING        GetJobResponse_Status = 1
+	GetJobResponse_DONE           GetJobResponse_Status = 2
+)
+
+var GetJobResponse_Status_name = map[int32]string{
+	0: "UNKNOWN_STATUS",
+	1: "PENDING",
+	2: "DONE",
+}
+var GetJobResponse_Status_value = map[string]int32{
+	"UNKNOWN_STATUS": 0,
+	"PENDING":        1,
+	"DONE":           2,
+}
+
+func (x GetJobResponse_Status) String() string {
+	return proto.EnumName(GetJobResponse_Status_name, int32(x))
+}
+func (GetJobResponse_Status) EnumDescriptor() ([]byte, []int) { return fileDescriptor0, []int{3, 0} }
+
+type StartJobRequest struct {
+	// TODO(light): what scene parameters do we want to give?
+	Name          string  `protobuf:"bytes,1,opt,name=name" json:"name,omitempty"`
+	ProductToPlug Product `protobuf:"varint,2,opt,name=product_to_plug,json=productToPlug,enum=renderdemo.Product" json:"product_to_plug,omitempty"`
+}
+
+func (m *StartJobRequest) Reset()                    { *m = StartJobRequest{} }
+func (m *StartJobRequest) String() string            { return proto.CompactTextString(m) }
+func (*StartJobRequest) ProtoMessage()               {}
+func (*StartJobRequest) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{0} }
+
+func (m *StartJobRequest) GetName() string {
+	if m != nil {
+		return m.Name
+	}
+	return ""
+}
+
+func (m *StartJobRequest) GetProductToPlug() Product {
+	if m != nil {
+		return m.ProductToPlug
+	}
+	return Product_UNKNOWN_PRODUCT
+}
+
+type StartJobResponse struct {
+	JobId string `protobuf:"bytes,1,opt,name=job_id,json=jobId" json:"job_id,omitempty"`
+}
+
+func (m *StartJobResponse) Reset()                    { *m = StartJobResponse{} }
+func (m *StartJobResponse) String() string            { return proto.CompactTextString(m) }
+func (*StartJobResponse) ProtoMessage()               {}
+func (*StartJobResponse) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{1} }
+
+func (m *StartJobResponse) GetJobId() string {
+	if m != nil {
+		return m.JobId
+	}
+	return ""
+}
+
+type GetJobRequest struct {
+	JobId string `protobuf:"bytes,1,opt,name=job_id,json=jobId" json:"job_id,omitempty"`
+}
+
+func (m *GetJobRequest) Reset()                    { *m = GetJobRequest{} }
+func (m *GetJobRequest) String() string            { return proto.CompactTextString(m) }
+func (*GetJobRequest) ProtoMessage()               {}
+func (*GetJobRequest) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{2} }
+
+func (m *GetJobRequest) GetJobId() string {
+	if m != nil {
+		return m.JobId
+	}
+	return ""
+}
+
+type GetJobResponse struct {
+	Status GetJobResponse_Status `protobuf:"varint,1,opt,name=status,enum=renderdemo.GetJobResponse_Status" json:"status,omitempty"`
 	// World-readable URL for created image.
-	ImageUrl string `protobuf:"bytes,1,opt,name=image_url,json=imageUrl" json:"image_url,omitempty"`
+	ImageUrl string `protobuf:"bytes,2,opt,name=image_url,json=imageUrl" json:"image_url,omitempty"`
 }
 
-func (m *GifResponse) Reset()                    { *m = GifResponse{} }
-func (m *GifResponse) String() string            { return proto.CompactTextString(m) }
-func (*GifResponse) ProtoMessage()               {}
-func (*GifResponse) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{1} }
+func (m *GetJobResponse) Reset()                    { *m = GetJobResponse{} }
+func (m *GetJobResponse) String() string            { return proto.CompactTextString(m) }
+func (*GetJobResponse) ProtoMessage()               {}
+func (*GetJobResponse) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{3} }
 
-func (m *GifResponse) GetImageUrl() string {
+func (m *GetJobResponse) GetStatus() GetJobResponse_Status {
+	if m != nil {
+		return m.Status
+	}
+	return GetJobResponse_UNKNOWN_STATUS
+}
+
+func (m *GetJobResponse) GetImageUrl() string {
 	if m != nil {
 		return m.ImageUrl
 	}
@@ -66,8 +176,12 @@ func (m *GifResponse) GetImageUrl() string {
 }
 
 func init() {
-	proto.RegisterType((*GifRequest)(nil), "renderdemo.GifRequest")
-	proto.RegisterType((*GifResponse)(nil), "renderdemo.GifResponse")
+	proto.RegisterType((*StartJobRequest)(nil), "renderdemo.StartJobRequest")
+	proto.RegisterType((*StartJobResponse)(nil), "renderdemo.StartJobResponse")
+	proto.RegisterType((*GetJobRequest)(nil), "renderdemo.GetJobRequest")
+	proto.RegisterType((*GetJobResponse)(nil), "renderdemo.GetJobResponse")
+	proto.RegisterEnum("renderdemo.Product", Product_name, Product_value)
+	proto.RegisterEnum("renderdemo.GetJobResponse_Status", GetJobResponse_Status_name, GetJobResponse_Status_value)
 }
 
 // Reference imports to suppress errors if they are not otherwise used.
@@ -81,7 +195,8 @@ const _ = grpc.SupportPackageIsVersion4
 // Client API for GifCreator service
 
 type GifCreatorClient interface {
-	CreateGif(ctx context.Context, in *GifRequest, opts ...grpc.CallOption) (*GifResponse, error)
+	StartJob(ctx context.Context, in *StartJobRequest, opts ...grpc.CallOption) (*StartJobResponse, error)
+	GetJob(ctx context.Context, in *GetJobRequest, opts ...grpc.CallOption) (*GetJobResponse, error)
 }
 
 type gifCreatorClient struct {
@@ -92,9 +207,18 @@ func NewGifCreatorClient(cc *grpc.ClientConn) GifCreatorClient {
 	return &gifCreatorClient{cc}
 }
 
-func (c *gifCreatorClient) CreateGif(ctx context.Context, in *GifRequest, opts ...grpc.CallOption) (*GifResponse, error) {
-	out := new(GifResponse)
-	err := grpc.Invoke(ctx, "/renderdemo.GifCreator/CreateGif", in, out, c.cc, opts...)
+func (c *gifCreatorClient) StartJob(ctx context.Context, in *StartJobRequest, opts ...grpc.CallOption) (*StartJobResponse, error) {
+	out := new(StartJobResponse)
+	err := grpc.Invoke(ctx, "/renderdemo.GifCreator/StartJob", in, out, c.cc, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *gifCreatorClient) GetJob(ctx context.Context, in *GetJobRequest, opts ...grpc.CallOption) (*GetJobResponse, error) {
+	out := new(GetJobResponse)
+	err := grpc.Invoke(ctx, "/renderdemo.GifCreator/GetJob", in, out, c.cc, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -104,27 +228,46 @@ func (c *gifCreatorClient) CreateGif(ctx context.Context, in *GifRequest, opts .
 // Server API for GifCreator service
 
 type GifCreatorServer interface {
-	CreateGif(context.Context, *GifRequest) (*GifResponse, error)
+	StartJob(context.Context, *StartJobRequest) (*StartJobResponse, error)
+	GetJob(context.Context, *GetJobRequest) (*GetJobResponse, error)
 }
 
 func RegisterGifCreatorServer(s *grpc.Server, srv GifCreatorServer) {
 	s.RegisterService(&_GifCreator_serviceDesc, srv)
 }
 
-func _GifCreator_CreateGif_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(GifRequest)
+func _GifCreator_StartJob_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(StartJobRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(GifCreatorServer).CreateGif(ctx, in)
+		return srv.(GifCreatorServer).StartJob(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/renderdemo.GifCreator/CreateGif",
+		FullMethod: "/renderdemo.GifCreator/StartJob",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(GifCreatorServer).CreateGif(ctx, req.(*GifRequest))
+		return srv.(GifCreatorServer).StartJob(ctx, req.(*StartJobRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _GifCreator_GetJob_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetJobRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(GifCreatorServer).GetJob(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/renderdemo.GifCreator/GetJob",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(GifCreatorServer).GetJob(ctx, req.(*GetJobRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -134,8 +277,12 @@ var _GifCreator_serviceDesc = grpc.ServiceDesc{
 	HandlerType: (*GifCreatorServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
-			MethodName: "CreateGif",
-			Handler:    _GifCreator_CreateGif_Handler,
+			MethodName: "StartJob",
+			Handler:    _GifCreator_StartJob_Handler,
+		},
+		{
+			MethodName: "GetJob",
+			Handler:    _GifCreator_GetJob_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
@@ -145,15 +292,29 @@ var _GifCreator_serviceDesc = grpc.ServiceDesc{
 func init() { proto.RegisterFile("proto/gifcreator.proto", fileDescriptor0) }
 
 var fileDescriptor0 = []byte{
-	// 150 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xe2, 0x12, 0x2b, 0x28, 0xca, 0x2f,
-	0xc9, 0xd7, 0x4f, 0xcf, 0x4c, 0x4b, 0x2e, 0x4a, 0x4d, 0x2c, 0xc9, 0x2f, 0xd2, 0x03, 0x0b, 0x08,
-	0x71, 0x15, 0xa5, 0xe6, 0xa5, 0xa4, 0x16, 0xa5, 0xa4, 0xe6, 0xe6, 0x2b, 0xf1, 0x70, 0x71, 0xb9,
-	0x67, 0xa6, 0x05, 0xa5, 0x16, 0x96, 0xa6, 0x16, 0x97, 0x28, 0x69, 0x71, 0x71, 0x83, 0x79, 0xc5,
-	0x05, 0xf9, 0x79, 0xc5, 0xa9, 0x42, 0xd2, 0x5c, 0x9c, 0x99, 0xb9, 0x89, 0xe9, 0xa9, 0xf1, 0xa5,
-	0x45, 0x39, 0x12, 0x8c, 0x0a, 0x8c, 0x1a, 0x9c, 0x41, 0x1c, 0x60, 0x81, 0xd0, 0xa2, 0x1c, 0x23,
-	0x2f, 0xb0, 0x4e, 0x67, 0x88, 0xc9, 0x42, 0x36, 0x5c, 0x9c, 0x60, 0x66, 0xaa, 0x7b, 0x66, 0x9a,
-	0x90, 0x98, 0x1e, 0xc2, 0x06, 0x3d, 0x84, 0xf1, 0x52, 0xe2, 0x18, 0xe2, 0x10, 0x8b, 0x9c, 0x78,
-	0xa2, 0x90, 0xdc, 0x94, 0xc4, 0x06, 0x76, 0xa6, 0x31, 0x20, 0x00, 0x00, 0xff, 0xff, 0xa5, 0xa1,
-	0x15, 0xc5, 0xc0, 0x00, 0x00, 0x00,
+	// 377 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x09, 0x6e, 0x88, 0x02, 0xff, 0x74, 0x92, 0x41, 0x8f, 0x93, 0x50,
+	0x10, 0xc7, 0x17, 0x5c, 0xd9, 0x76, 0x74, 0xe9, 0xcb, 0x6c, 0x34, 0xeb, 0xae, 0x87, 0xca, 0xc1,
+	0x54, 0x0f, 0x98, 0xb4, 0x27, 0xe3, 0x41, 0x6d, 0x4b, 0x48, 0x6d, 0x02, 0xe4, 0x01, 0x31, 0xf1,
+	0x42, 0xa0, 0xbc, 0x12, 0x1a, 0xda, 0x87, 0x8f, 0xc7, 0x37, 0xf1, 0xea, 0x77, 0x35, 0x02, 0x4d,
+	0xd1, 0xb4, 0xb7, 0x97, 0x79, 0xbf, 0xf9, 0xcf, 0xcc, 0x7f, 0x06, 0x5e, 0x96, 0x82, 0x4b, 0xfe,
+	0x21, 0xcb, 0xb7, 0x1b, 0xc1, 0x62, 0xc9, 0x85, 0xd9, 0x04, 0x10, 0x04, 0x3b, 0xa4, 0x4c, 0xa4,
+	0x6c, 0xcf, 0x8d, 0x04, 0x46, 0xbe, 0x8c, 0x85, 0xfc, 0xc6, 0x13, 0xca, 0x7e, 0xd6, 0xac, 0x92,
+	0x88, 0x70, 0x7d, 0x88, 0xf7, 0xec, 0x5e, 0x19, 0x2b, 0x93, 0x21, 0x6d, 0xde, 0xf8, 0x09, 0x46,
+	0xa5, 0xe0, 0x69, 0xbd, 0x91, 0x91, 0xe4, 0x51, 0x59, 0xd4, 0xd9, 0xbd, 0x3a, 0x56, 0x26, 0xfa,
+	0xf4, 0xce, 0x3c, 0x89, 0x99, 0x5e, 0x8b, 0xd0, 0xdb, 0x8e, 0x0d, 0xb8, 0x57, 0xd4, 0x99, 0xf1,
+	0x0e, 0xc8, 0xa9, 0x46, 0x55, 0xf2, 0x43, 0xc5, 0xf0, 0x05, 0x68, 0x3b, 0x9e, 0x44, 0x79, 0xda,
+	0x95, 0x79, 0xba, 0xe3, 0xc9, 0x2a, 0x35, 0xde, 0xc2, 0xad, 0xcd, 0xfa, 0xcd, 0x5c, 0xe0, 0x7e,
+	0x2b, 0xa0, 0x1f, 0xc1, 0x4e, 0xf1, 0x23, 0x68, 0x95, 0x8c, 0x65, 0x5d, 0x35, 0xa4, 0x3e, 0x7d,
+	0xd3, 0xef, 0xec, 0x5f, 0xd6, 0xf4, 0x1b, 0x90, 0x76, 0x09, 0xf8, 0x08, 0xc3, 0x7c, 0x1f, 0x67,
+	0x2c, 0xaa, 0x45, 0xd1, 0xcc, 0x35, 0xa4, 0x83, 0x26, 0x10, 0x8a, 0xc2, 0x98, 0x81, 0xd6, 0xe2,
+	0x88, 0xa0, 0x87, 0xce, 0xda, 0x71, 0xbf, 0x3b, 0x91, 0x1f, 0x7c, 0x0d, 0x42, 0x9f, 0x5c, 0xe1,
+	0x33, 0xb8, 0xf1, 0x2c, 0x67, 0xb9, 0x72, 0x6c, 0xa2, 0xe0, 0x00, 0xae, 0x97, 0xae, 0x63, 0x11,
+	0xf5, 0xfd, 0x17, 0xb8, 0xe9, 0xcc, 0xc0, 0x3b, 0x18, 0x1d, 0xb3, 0x3c, 0xea, 0x2e, 0xc3, 0x45,
+	0x40, 0xae, 0xfe, 0x92, 0x36, 0xf5, 0x16, 0x44, 0x41, 0x1d, 0x60, 0x1d, 0xce, 0x2d, 0xea, 0x58,
+	0x81, 0xe5, 0x13, 0x15, 0x35, 0x50, 0x6d, 0x97, 0x3c, 0x99, 0xfe, 0x52, 0x00, 0xec, 0x7c, 0xbb,
+	0x68, 0x37, 0x87, 0x16, 0x0c, 0x8e, 0x1e, 0xe2, 0x63, 0x7f, 0xb2, 0xff, 0xb6, 0xf7, 0xf0, 0xfa,
+	0xfc, 0x67, 0x67, 0xd2, 0x67, 0xd0, 0x5a, 0x2b, 0xf0, 0xd5, 0x39, 0x7b, 0x5a, 0x89, 0x87, 0xcb,
+	0xce, 0xcd, 0x9f, 0xff, 0xe8, 0x5d, 0x4f, 0xa2, 0x35, 0x07, 0x35, 0xfb, 0x13, 0x00, 0x00, 0xff,
+	0xff, 0x2e, 0x9b, 0x9f, 0x4c, 0x6a, 0x02, 0x00, 0x00,
 }

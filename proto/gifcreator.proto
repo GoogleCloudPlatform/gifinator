@@ -5,14 +5,40 @@ package renderdemo;
 option go_package = "renderdemo";
 
 service GifCreator {
-  rpc CreateGif (GifRequest) returns (GifResponse);
+  rpc StartJob (StartJobRequest) returns (StartJobResponse);
+  rpc GetJob (GetJobRequest) returns (GetJobResponse);
 }
 
-message GifRequest {
+message StartJobRequest {
   // TODO(light): what scene parameters do we want to give?
+  string name = 1;
+  Product product_to_plug = 2;
 }
 
-message GifResponse {
+enum Product {
+  UNKNOWN_PRODUCT = 0;
+  GRPC = 1;
+  KUBERNETES = 2;
+  GO = 3;
+}
+
+message StartJobResponse {
+  string job_id = 1;
+}
+
+message GetJobRequest {
+  string job_id = 1;
+}
+
+message GetJobResponse {
+  enum Status {
+    UNKNOWN_STATUS = 0;
+    PENDING = 1;
+    DONE = 2;
+  };
+
+  Status status = 1;
+
   // World-readable URL for created image.
-  string image_url = 1;
+  string image_url = 2;
 }
