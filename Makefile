@@ -1,5 +1,6 @@
 all:
-	go build -o gifcreator/gifcreator ./gifcreator
+	go build -o frontend/frontend ./frontend
+	#go build -o gifcreator/gifcreator ./gifcreator
 	go build -o movie/movie ./movie
 	go build -o render/render ./render
 
@@ -10,13 +11,5 @@ proto/gifcreator.pb.go proto/movie.pb.go proto/render.pb.go: proto/gifcreator.pr
 
 clean:
 	rm -f gifcreator/gifcreator movie/movie render/render
-
-run:
-	export FRONTEND_PORT=8080; \
-	export FRONTEND_TEMPLATES_DIR=frontend/templates; \
-	export FRONTEND_STATIC_DIR=frontend/static; \
-	export MOVIE_PORT=9080; \
-	go run frontend/*; \
-	go run movie/movie.go
 
 .PHONY: all proto clean
