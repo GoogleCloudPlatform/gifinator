@@ -4,6 +4,8 @@ import (
 	"errors"
 	"log"
 	"net"
+	"os"
+	"strconv"
 
 	pb "github.com/GoogleCloudPlatform/k8s-render-demo/proto"
 	"golang.org/x/net/context"
@@ -17,7 +19,13 @@ func (server) RenderFrame(ctx context.Context, req *pb.RenderRequest) (*pb.Rende
 }
 
 func main() {
-	l, err := net.Listen("tcp", ":8080")
+	serving_port := os.Getenv("RENDER_PORT")
+	i, err := strconv.Atoi(serving_port)
+	if (err != nil) || (i < 1) {
+		log.Fatalf("please set env var RENDER_PORT to a valid port")
+	}
+
+	l, err := net.Listen("tcp", ":"+serving_port)
 	if err != nil {
 		log.Fatalf("listen failed: %v", err)
 	}
