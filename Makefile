@@ -1,6 +1,6 @@
 all:
 	go build -o frontend/frontend ./frontend
-	#go build -o gifcreator/gifcreator ./gifcreator
+	go build -o gifcreator/gifcreator ./gifcreator
 	go build -o movie/movie ./movie
 	go build -o render/render ./render
 

@@ -1,2 +1,2 @@
-frontend: frontend/frontend
-movie: movie/movie
+render: render/render
+gifcreator: gifcreator/gifcreator
