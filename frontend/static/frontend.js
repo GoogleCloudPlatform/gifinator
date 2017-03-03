@@ -15,15 +15,15 @@
  */
 
 function Frontend_checkJob(job_id, on_complete) {
-  _getRemoteJson("/check/"+job_id, function(req_status, data){
-    if(req_status){
+  _getRemoteJson("/check/"+job_id, function(http_status, data){
+    if(http_status==200){
       if(data.status != null) {
         on_complete(data.status, null);
       }else{
         alert('Error retrieving status.');
       }
     }else{
-      alert('Error retrieving status. Error code: '+data);
+      alert('Error retrieving status. Error code: '+http_status);
     }
   });
 }
@@ -35,9 +35,9 @@ function Frontend_checkJob(job_id, on_complete) {
  *    @uri          string    The ID of the job
  *    @on_complete  function  Callback to exectute once the HTTP request
  *                            completes. The callback takes two parameters:
- *                              @http_status 0=failed, 1=succeeded
- *                              @data        if status=0, HTTP error code
- *                                           if status=1, data object
+ *                              @http_status http status code
+ *                              @data        de-serialized JSON object if status
+ *                                           is 200, else null
  */
 
 function _getRemoteJson(uri, on_complete) {
@@ -45,9 +45,9 @@ function _getRemoteJson(uri, on_complete) {
   xmlhttp.onreadystatechange = function() {
     if (xmlhttp.readyState == XMLHttpRequest.DONE ) {
       if (xmlhttp.status == 200) {
-        on_complete(1,JSON.parse(xmlhttp.responseText));
+        on_complete(xmlhttp.status,JSON.parse(xmlhttp.responseText));
       } else {
-        on_complete(0,xmlhttp.status)
+        on_complete(xmlhttp.status,null)
       }
     }
   }
