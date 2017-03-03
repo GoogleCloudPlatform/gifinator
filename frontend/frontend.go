@@ -7,6 +7,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"encoding/json"
+
 
 	"google.golang.org/grpc"
 	"golang.org/x/net/context"
@@ -48,6 +50,7 @@ func main() {
 
 	http.HandleFunc("/", handleForm)
 	http.HandleFunc("/gif/", handleGif)
+	http.HandleFunc("/check/", handleGifStatus)
 	http.Handle("/static/", http.StripPrefix("/static/", fs))
 	http.ListenAndServe(":"+serving_port, nil)
 }
@@ -133,4 +136,27 @@ func handleGif(w http.ResponseWriter, r *http.Request) {
 	} else {
 		http.Error(w, err.Error(), 500)
 	}
+}
+
+
+func handleGifStatus(w http.ResponseWriter, r *http.Request) {
+	pathSegments := strings.Split(r.URL.Path, "/")
+	if len(pathSegments) < 2 {
+		http.Error(w, "Can't find the GIF ID", 404)
+		return
+	}
+
+  // TODO(jessup) Need stronger input validation here.
+	response, err :=
+		gcClient.GetJob(
+			context.Background(),
+			&pb.GetJobRequest{JobId: pathSegments[2]})
+	if err != nil {
+		// TODO(jessup) Swap these out for proper logging
+		fmt.Fprintf(os.Stderr, "cannot get status of gif - %v", err)
+		return
+	}
+
+	jsonReponse, _ := json.Marshal(response)
+  fmt.Fprintf(w, string(jsonReponse))
 }

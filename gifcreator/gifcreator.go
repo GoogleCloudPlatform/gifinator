@@ -6,6 +6,7 @@ import (
 	"os"
 	"strconv"
 	"math/rand"
+	"fmt"
 
 	pb "github.com/GoogleCloudPlatform/k8s-render-demo/proto"
 	"golang.org/x/net/context"
@@ -23,14 +24,16 @@ func (server) StartJob(ctx context.Context, req *pb.StartJobRequest) (*pb.StartJ
 func (server) GetJob(ctx context.Context, req *pb.GetJobRequest) (*pb.GetJobResponse, error) {
 	// TODO(jessup) look this up from a Reids service
 	var status pb.GetJobResponse_Status
-	switch rand.Intn(2) {
-	case 0:
-		status = pb.GetJobResponse_UNKNOWN_STATUS
+	statusInt := rand.Intn(2)+1
+	switch statusInt {
 	case 1:
 		status = pb.GetJobResponse_PENDING
 	case 2:
 		status = pb.GetJobResponse_DONE
+	default:
+		status = pb.GetJobResponse_UNKNOWN_STATUS
 	}
+	fmt.Printf("! %d", statusInt)
 	response := pb.GetJobResponse{ ImageUrl: "", Status: status }
 	return &response, nil
 }

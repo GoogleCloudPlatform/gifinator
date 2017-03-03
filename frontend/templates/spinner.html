@@ -9,4 +9,32 @@
 <img src="/static/gopher_spinner.gif"/>
 
 </center>
+<script>
+var job_id = "{{.}}"
+var retryIntervalMs = 1000;
+var interval = null;
+
+checkJob = function(){
+  window.clearTimeout(interval)
+  Frontend_checkJob(job_id, callback);
+}
+
+callback = function(status, err) {
+  switch(status) {
+    case 0:
+      console.log("Error with "+job_id+" : "+err.toString()+" : "+retryIntervalMs);
+      break;
+    case 1:
+      console.log("Done!");
+      break;
+    case 2:
+      retryIntervalMs = retryIntervalMs*2;
+      console.log("Retrying in "+retryIntervalMs+"ms.");
+      setTimeout(checkJob, retryIntervalMs);
+      break;
+  }
+};
+
+interval = window.setTimeout(checkJob, retryIntervalMs);
+</script>
 {{end}}
