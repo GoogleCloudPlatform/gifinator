@@ -12,13 +12,6 @@ steps:
     'github.com/GoogleCloudPlatform/k8s-render-demo/gifcreator',
     'github.com/GoogleCloudPlatform/k8s-render-demo/render']
   env: ['PROJECT_ROOT=github.com/GoogleCloudPlatform/k8s-render-demo']
-# - name: 'gcr.io/cloud-builders/golang-project'
-#   args:
-#   - 'github.com/GoogleCloudPlatform/k8s-render-demo/frontend'
-#   - 'github.com/GoogleCloudPlatform/k8s-render-demo/gifcreator'
-#   - 'github.com/GoogleCloudPlatform/k8s-render-demo/render'
-#   - '--tag=server_intermediate'
-#   env: ['PROJECT_ROOT=github.com/GoogleCloudPlatform/k8s-render-demo']
 # Add static files
 - name: 'gcr.io/cloud-builders/docker'
   args: ['build', '--tag=gcr.io/$PROJECT_ID/gifcreator', '.']
