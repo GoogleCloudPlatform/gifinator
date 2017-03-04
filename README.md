@@ -53,3 +53,12 @@ gcloud container builds submit . --config=cloudbuild.yaml
 ```
 
 This will build and push the image to `gcr.io/YOUR_PROJECT_ID/gifcreator`
+
+## Deploy the solution to a Kubernetes cluster
+
+First create a Kubernetes cluster and make sure `kubectl` is installed and configured
+to talk to it.
+
+```bash
+kubectl create -f k8s
+```
