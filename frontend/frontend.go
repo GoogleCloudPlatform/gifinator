@@ -34,9 +34,12 @@ func main() {
 	projectID = os.Getenv("GOOGLE_PROJECT_ID")
 	port = os.Getenv("FRONTEND_PORT")
 	gifcreatorPort := os.Getenv("GIFCREATOR_PORT")
+	gifcreatorName := os.Getenv("GIFCREATOR_NAME")
+
+	// TODO(jessup): check env vars for correctnesss
 
 	fs := http.FileServer(http.Dir(staticPath))
-	movieHostAddr := "localhost:" + gifcreatorPort
+	gcHostAddr := gifcreatorName + ":" + gifcreatorPort
 
 	ctx := context.Background()
 	tc, err := trace.NewClient(ctx, projectID, trace.EnableGRPCTracing)
@@ -46,11 +49,11 @@ func main() {
 	traceClient = tc
 
 	// TODO(jessup) Create TLS certs
-	conn, err := grpc.Dial(movieHostAddr,
+	conn, err := grpc.Dial(gcHostAddr,
 		trace.EnableGRPCTracingDialOption, grpc.WithInsecure())
 	if err != nil {
 		// TODO(jessup) Swap these out for proper logging
-		fmt.Fprintf(os.Stderr, "cannot connect to movieService %s\n%v", movieHostAddr, err)
+		fmt.Fprintf(os.Stderr, "cannot connect to gifcreator %s\n%v", gcHostAddr, err)
 		return
 	}
 	defer conn.Close()
