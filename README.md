@@ -15,6 +15,8 @@ go get github.com/mattn/goreman
 You will also need to install the [Google Cloud SDK](https://cloud.google.com/sdk/downloads) to build
 and deploy to Kubernetes.
 
+To run and test locally, you will also need to have Redis installed and running.
+
 ### Building Locally
 
 ```bash
@@ -25,9 +27,13 @@ make
 
 ### Regenerating Protos
 
-If you need to rebuild the generated code for the protos, then install `protoc` and run `make proto`.
+If you need to rebuild the generated code for the protos, then install `protoc`
+and run `make proto`.
 
 ## Running Locally
+
+Configure `.env` as appropriate. By default it assumes everything is running on
+localhost, including Redis.
 
 ```bash
 gcloud auth application-default login # first time only
@@ -59,6 +65,7 @@ This will build and push the image to `gcr.io/YOUR_PROJECT_ID/gifcreator`
 First create a Kubernetes cluster and make sure `kubectl` is installed and configured
 to talk to it.
 
+To deploy the three services, and Redis, to the cluster for the first time, run:
 ```bash
 kubectl create -f k8s
 ```

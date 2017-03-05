@@ -22,15 +22,15 @@ checkJob = function(){
 callback = function(status, err) {
   switch(status) {
     case 0:
-      console.log("Error with "+job_id+" : "+err.toString()+" : "+retryIntervalMs);
+      alert("Error with "+job_id+" : "+err.toString());
       break;
     case 1:
-      console.log("Done!");
-      break;
-    case 2:
       retryIntervalMs = retryIntervalMs*2;
       console.log("Retrying in "+retryIntervalMs+"ms.");
       setTimeout(checkJob, retryIntervalMs);
+      break;
+    case 2:
+      console.log("Done!");
       break;
   }
 };

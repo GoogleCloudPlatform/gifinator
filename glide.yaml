@@ -13,3 +13,5 @@ import:
   - context
 - package: google.golang.org/grpc
   version: ^1.0.5
+- package: gopkg.in/redis.v5
+  version: ^5.2.9

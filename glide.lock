@@ -1,5 +1,5 @@
-hash: dfa3083040ad5c78ea0b1c9d7846f8d3a753abd5a5f7dcc9b3971c2283465e65
-updated: 2017-03-04T06:48:14.371654916Z
+hash: 0209990f5eaa0cf4999a927b5aefd05a3e38f89455a578ae6b57f44d17e7b311
+updated: 2017-03-05T03:24:46.637396446Z
 imports:
 - name: cloud.google.com/go
   version: c7e7950fdf36db7a14a59fab0513981a6f26ad2e
@@ -79,4 +79,15 @@ imports:
   - stats
   - tap
   - transport
+- name: gopkg.in/bsm/ratelimit.v1
+  version: db14e161995a5177acef654cb0dd785e8ee8bc22
+- name: gopkg.in/redis.v3
+  version: b5e368500d0a508ef8f16e9c2d4025a8a46bcc29
+  subpackages:
+  - internal
+  - internal/consistenthash
+  - internal/hashtag
+  - internal/pool
+- name: gopkg.in/redis.v5
+  version: a16aeec10ff407b1e7be6dd35797ccf5426ef0f0
 testImports: []

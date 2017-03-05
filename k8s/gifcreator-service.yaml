@@ -7,5 +7,5 @@ spec:
     - port: 11080
       targetPort: 11080
   selector:
-    app: gifcreator
+    app: gifcreator-server
   type: LoadBalancer

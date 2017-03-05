@@ -1,7 +1,7 @@
 apiVersion: extensions/v1beta1
 kind: Deployment
 metadata:
-  name: gifcreator-deployment
+  name: gifcreator-server-deployment
 spec:
   replicas: 2 # tells deployment to run 2 pods matching the template
   template: # create pods using pod definition in this template
@@ -9,15 +9,48 @@ spec:
       # unlike pod-nginx.yaml, the name is not included in the meta data as a unique name is
       # generated from the deployment name
       labels:
-        app: gifcreator
+        app: gifcreator-server
     spec:
       containers:
-      - name: gifcreator
+      - name: gifcreator-server
         image: gcr.io/jessup-spinnaker-test/gifcreator:latest # TODO(jessup) Ideally this is dynamic
         command: ["/gifcreator"]
         env:
         - name: GIFCREATOR_PORT
           value: "11080"
+        - name: REDIS_PORT
+          value: "6379"
+        - name: REDIS_NAME
+          value: "redis-master"
+        - name: GOOGLE_PROJECT_ID
+          value: "jessup-spinnaker-test" # TODO(jessup) Ideally this is dynamic
+        ports:
+        - containerPort: 11080 # TODO(jessup) figure out how to use this in config
+---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: gifcreator-worker-deployment
+spec:
+  replicas: 2 # tells deployment to run 2 pods matching the template
+  template: # create pods using pod definition in this template
+    metadata:
+      # unlike pod-nginx.yaml, the name is not included in the meta data as a unique name is
+      # generated from the deployment name
+      labels:
+        app: gifcreator-worker
+    spec:
+      containers:
+      - name: gifcreator-worker
+        image: gcr.io/jessup-spinnaker-test/gifcreator:latest # TODO(jessup) Ideally this is dynamic
+        command: ["/gifcreator", "-worker"]
+        env:
+        - name: GIFCREATOR_PORT
+          value: "11080"
+        - name: REDIS_PORT
+          value: "6379"
+        - name: REDIS_NAME
+          value: "redis-master"
         - name: GOOGLE_PROJECT_ID
           value: "jessup-spinnaker-test" # TODO(jessup) Ideally this is dynamic
         ports:
