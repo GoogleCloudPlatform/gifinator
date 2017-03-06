@@ -12,6 +12,14 @@ message RenderRequest {
   // GCS path to write output image into.
   string gcs_output = 1;
 
+  // Product logo image to transform, stored locally.
+  // TODO(shadams): pull image from elsewhere, making render 
+  // more reusable.
+  string img_path = 2;
+
+  // Frame number (in range [0,36))
+  int64 frame = 3;
+
   // TODO(light): scene description
 }
 

@@ -1,13 +1,16 @@
 package main
 
 import (
-	"errors"
+	"fmt"
+	"image"
+	"image/png"
 	"log"
 	"net"
 	"os"
 	"strconv"
 
 	pb "github.com/GoogleCloudPlatform/k8s-render-demo/proto"
+	"github.com/anthonynsimon/bild/transform"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 )
@@ -15,7 +18,37 @@ import (
 type server struct{}
 
 func (server) RenderFrame(ctx context.Context, req *pb.RenderRequest) (*pb.RenderResponse, error) {
-	return nil, errors.New("not implemented")
+	// TODO: read file from GCS
+	r, err := os.Open(req.ImgPath)
+	if err != nil {
+		// TODO: response?
+		return nil, err
+	}
+	defer r.Close()
+	img, _, err := image.Decode(r)
+	if err != nil {
+		// TODO: response?
+		return nil, err
+	}
+
+	deg := float64(req.Frame * 10)
+	rotated := transform.Rotate(img, deg, nil)
+
+	// TODO: store in GCS
+	file, err := os.Create(fmt.Sprintf("%d%s", deg, req.ImgPath))
+	if err != nil {
+		// TODO: response?
+		return nil, err
+	}
+	defer file.Close()
+
+	err = png.Encode(file, rotated)
+	if err != nil {
+		// TODO: response?
+		return nil, err
+	}
+
+	return nil, nil
 }
 
 func main() {

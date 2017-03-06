@@ -13,19 +13,19 @@ import (
 	pb "github.com/GoogleCloudPlatform/k8s-render-demo/proto"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
-
-	"gopkg.in/redis.v5"
 )
 
 type server struct{}
 
 var (
-	redisClient *redis.Client
-	workerMode  = flag.Bool("worker", false, "run in worker mode rather than server")
+	redisClient  *redis.Client
+	renderClient pb.RenderClient
+	workerMode   = flag.Bool("worker", false, "run in worker mode rather than server")
 )
 
 func (server) StartJob(ctx context.Context, req *pb.StartJobRequest) (*pb.StartJobResponse, error) {
 	// TODO(jessup) this should be stored as a job in Redis
+
 	// Retrieive the next job ID from Redis
 	jobId, err := redisClient.Incr("gifjob_counter").Result()
 	if err != nil {
@@ -42,7 +42,7 @@ func (server) StartJob(ctx context.Context, req *pb.StartJobRequest) (*pb.StartJ
 	// TODO(jessup) need something real here
 	var taskId int64
 	var taskIdStr string
-	for i := 0; i < 100; i++ {
+	for i := 0; i < 36; i++ {
 		//Get new task id
 		taskId, err = redisClient.Incr("counter_queued_gifjob_" + jobIdStr).Result()
 		if err != nil {
@@ -61,10 +61,24 @@ func (server) StartJob(ctx context.Context, req *pb.StartJobRequest) (*pb.StartJ
 		}
 		// Also push to master queue
 		fmt.Fprintf(os.Stdout, "enqueued gifjob_%s_%s\n", jobIdStr, taskIdStr)
+		req := &pb.RenderRequest{
+			GcsOutput: "TODO",
+			ImgPath:   "gopher.png", // TODO: something real
+			Frame:     i,
+		}
+		// response, err :=
+		// 	renderClient.RenderFrame(ctx /* TODO, trace */, req)
+		// if err != nil {
+		// 	// TODO(jessup) Swap these out for proper logging
+		// 	fmt.Fprintf(os.Stderr, "cannot request Gif - %v", err)
+		// 	return nil, err
+		// }
+		// TODO: finish
 	}
 
 	// Return job ID
 	response := pb.StartJobResponse{JobId: jobIdStr}
+
 	return &response, nil
 }
 
