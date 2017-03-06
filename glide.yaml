@@ -15,3 +15,7 @@ import:
   version: ^1.0.5
 - package: gopkg.in/redis.v5
   version: ^5.2.9
+- package: github.com/anthonynsimon/bild
+  version: ^0.10.0
+  subpackages:
+  - transform

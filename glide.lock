@@ -1,5 +1,5 @@
-hash: 0209990f5eaa0cf4999a927b5aefd05a3e38f89455a578ae6b57f44d17e7b311
-updated: 2017-03-05T03:24:46.637396446Z
+hash: 8db1f93a9c4b013f41b48d61e153a698be9b25a30f0390ad8283b46c748bd997
+updated: 2017-03-06T22:52:45.75485664Z
 imports:
 - name: cloud.google.com/go
   version: c7e7950fdf36db7a14a59fab0513981a6f26ad2e
@@ -9,6 +9,13 @@ imports:
   - internal/optional
   - storage
   - trace
+- name: github.com/anthonynsimon/bild
+  version: 35fd1904d43f809ded0959922164885e25577aa2
+  subpackages:
+  - clone
+  - math/f64
+  - parallel
+  - transform
 - name: github.com/golang/protobuf
   version: 69b215d01a5606c843240eab4937eab3acee6530
   subpackages:
@@ -79,15 +86,12 @@ imports:
   - stats
   - tap
   - transport
-- name: gopkg.in/bsm/ratelimit.v1
-  version: db14e161995a5177acef654cb0dd785e8ee8bc22
-- name: gopkg.in/redis.v3
-  version: b5e368500d0a508ef8f16e9c2d4025a8a46bcc29
+- name: gopkg.in/redis.v5
+  version: a16aeec10ff407b1e7be6dd35797ccf5426ef0f0
   subpackages:
   - internal
   - internal/consistenthash
   - internal/hashtag
   - internal/pool
-- name: gopkg.in/redis.v5
-  version: a16aeec10ff407b1e7be6dd35797ccf5426ef0f0
+  - internal/proto
 testImports: []

@@ -10,6 +10,8 @@ import (
 	"strings"
 	"time"
 
+	"gopkg.in/redis.v5"
+
 	pb "github.com/GoogleCloudPlatform/k8s-render-demo/proto"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
@@ -64,15 +66,16 @@ func (server) StartJob(ctx context.Context, req *pb.StartJobRequest) (*pb.StartJ
 		req := &pb.RenderRequest{
 			GcsOutput: "TODO",
 			ImgPath:   "gopher.png", // TODO: something real
-			Frame:     i,
+			Frame:     int64(i),
 		}
-		// response, err :=
-		// 	renderClient.RenderFrame(ctx /* TODO, trace */, req)
-		// if err != nil {
-		// 	// TODO(jessup) Swap these out for proper logging
-		// 	fmt.Fprintf(os.Stderr, "cannot request Gif - %v", err)
-		// 	return nil, err
-		// }
+		_, err :=
+			renderClient.RenderFrame(ctx /* TODO, trace */, req)
+
+		if err != nil {
+			// TODO(jessup) Swap these out for proper logging
+			fmt.Fprintf(os.Stderr, "error requesting frame - %v", err)
+			return nil, err
+		}
 		// TODO: finish
 	}
 
