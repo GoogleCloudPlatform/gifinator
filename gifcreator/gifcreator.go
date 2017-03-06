@@ -15,6 +15,8 @@ import (
 	pb "github.com/GoogleCloudPlatform/k8s-render-demo/proto"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
+
+	"cloud.google.com/go/trace"
 )
 
 type server struct{}
@@ -23,6 +25,7 @@ var (
 	redisClient  *redis.Client
 	renderClient pb.RenderClient
 	workerMode   = flag.Bool("worker", false, "run in worker mode rather than server")
+	traceClient  *trace.Client
 )
 
 func (server) StartJob(ctx context.Context, req *pb.StartJobRequest) (*pb.StartJobResponse, error) {
@@ -41,7 +44,6 @@ func (server) StartJob(ctx context.Context, req *pb.StartJobRequest) (*pb.StartJ
 	}
 
 	// Add tasks to the GifJob queue for each frame to render
-	// TODO(jessup) need something real here
 	var taskId int64
 	var taskIdStr string
 	for i := 0; i < 36; i++ {
@@ -61,22 +63,7 @@ func (server) StartJob(ctx context.Context, req *pb.StartJobRequest) (*pb.StartJ
 		if err != nil {
 			return nil, err
 		}
-		// Also push to master queue
 		fmt.Fprintf(os.Stdout, "enqueued gifjob_%s_%s\n", jobIdStr, taskIdStr)
-		req := &pb.RenderRequest{
-			GcsOutput: "TODO",
-			ImgPath:   "gopher.png", // TODO: something real
-			Frame:     int64(i),
-		}
-		_, err :=
-			renderClient.RenderFrame(ctx /* TODO, trace */, req)
-
-		if err != nil {
-			// TODO(jessup) Swap these out for proper logging
-			fmt.Fprintf(os.Stderr, "error requesting frame - %v", err)
-			return nil, err
-		}
-		// TODO: finish
 	}
 
 	// Return job ID
@@ -103,6 +90,8 @@ func leaseNextTask() error {
 	// extract task ID and job ID
 	strs := strings.Split(jobString, "_")
 	jobIdStr := strs[0]
+	taskIdStr := strs[1]
+	taskId, _ := strconv.ParseInt(taskIdStr, 10, 64)
 
 	payload, err := redisClient.Get("task_gifjob_" + jobString).Result()
 	if err != nil {
@@ -111,6 +100,24 @@ func leaseNextTask() error {
 	fmt.Fprintf(os.Stdout, "leased gifjob_%s %s\n", jobString, payload)
 
 	// DO WORK
+
+	// TODO(jessup) Actually de-serialize the payload and translate into
+	// tasks for the API.
+	span := traceClient.NewSpan("/requestrender") // TODO(jbd): make /memcreate top-level span optional
+	defer span.Finish()
+	req := &pb.RenderRequest{
+		GcsOutput: "TODO",
+		ImgPath:   "gopher.png", // TODO: something real
+		Frame:     taskId,
+	}
+	_, err =
+		renderClient.RenderFrame(trace.NewContext(context.Background(), span), req)
+
+	if err != nil {
+		// TODO(jessup) Swap these out for proper logging
+		fmt.Fprintf(os.Stderr, "error requesting frame - %v", err)
+		return err
+	}
 
 	// delete item from gifjob_processing
 	err = redisClient.LRem("gifjob_processing", 1, jobString).Err()
@@ -169,8 +176,14 @@ func main() {
 	if (err != nil) || (i < 1) {
 		log.Fatalf("please set env var GIFCREATOR_PORT to a valid port")
 	}
+
+	// TODO(jessup) Need stricter checking here.
 	redisName := os.Getenv("REDIS_NAME")
 	redisPort := os.Getenv("REDIS_PORT")
+	projectID := os.Getenv("GOOGLE_PROJECT_ID")
+	renderName := os.Getenv("RENDER_NAME")
+	renderPort := os.Getenv("RENDER_PORT")
+  renderHostAddr := renderName+":"+renderPort
 
 	redisClient = redis.NewClient(&redis.Options{
 		Addr:     redisName + ":" + redisPort,
@@ -181,6 +194,25 @@ func main() {
 	if *workerMode == true {
 		// Worker mode will perpetually poll the queue and lease tasks
 		fmt.Fprintf(os.Stdout, "starting gifcreator in worker mode\n")
+
+		ctx := context.Background()
+		traceClient, err = trace.NewClient(ctx, projectID, trace.EnableGRPCTracing)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		conn, err := grpc.Dial(renderHostAddr,
+			trace.EnableGRPCTracingDialOption, grpc.WithInsecure())
+
+		if err != nil {
+			// TODO(jessup) Swap these out for proper logging
+			fmt.Fprintf(os.Stderr, "cannot connect to render service %s\n%v", renderHostAddr, err)
+			return
+		}
+		defer conn.Close()
+
+		renderClient = pb.NewRenderClient(conn)
+
 		for {
 			err := leaseNextTask()
 			if err != nil {
