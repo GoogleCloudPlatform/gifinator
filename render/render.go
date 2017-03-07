@@ -19,15 +19,14 @@ type server struct{}
 
 func (server) RenderFrame(ctx context.Context, req *pb.RenderRequest) (*pb.RenderResponse, error) {
 	// TODO: read file from GCS
-	r, err := os.Open(req.ImgPath)
+	wdPath, _ := os.Getwd()
+	r, err := os.Open(wdPath+req.ImgPath)
 	if err != nil {
-		// TODO: response?
 		return nil, err
 	}
 	defer r.Close()
 	img, _, err := image.Decode(r)
 	if err != nil {
-		// TODO: response?
 		return nil, err
 	}
 
@@ -35,7 +34,8 @@ func (server) RenderFrame(ctx context.Context, req *pb.RenderRequest) (*pb.Rende
 	rotated := transform.Rotate(img, deg, nil)
 
 	// TODO: store in GCS
-	file, err := os.Create(fmt.Sprintf("%d%s", deg, req.ImgPath))
+	tempPath := req.GcsOutputBase+fmt.Sprintf("%s%.0f", "/image_", deg)
+	file, err := os.Create(tempPath)
 	if err != nil {
 		// TODO: response?
 		return nil, err
@@ -48,7 +48,8 @@ func (server) RenderFrame(ctx context.Context, req *pb.RenderRequest) (*pb.Rende
 		return nil, err
 	}
 
-	return nil, nil
+	response := pb.RenderResponse{GcsOutput: tempPath}
+	return &response, nil
 }
 
 func main() {

@@ -106,8 +106,8 @@ func leaseNextTask() error {
 	span := traceClient.NewSpan("/requestrender") // TODO(jbd): make /memcreate top-level span optional
 	defer span.Finish()
 	req := &pb.RenderRequest{
-		GcsOutput: "TODO",
-		ImgPath:   "gopher.png", // TODO: something real
+		GcsOutputBase: os.TempDir(),
+		ImgPath:   "/render/gopher.png", // TODO: something real
 		Frame:     taskId,
 	}
 	_, err =

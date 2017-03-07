@@ -10,10 +10,10 @@ service Render {
 
 message RenderRequest {
   // GCS path to write output image into.
-  string gcs_output = 1;
+  string gcs_output_base = 1;
 
   // Product logo image to transform, stored locally.
-  // TODO(shadams): pull image from elsewhere, making render 
+  // TODO(shadams): pull image from elsewhere, making render
   // more reusable.
   string img_path = 2;
 
@@ -24,5 +24,6 @@ message RenderRequest {
 }
 
 message RenderResponse {
-  // empty for now, successful response means image was written to GCS.
+  // GCS path image was written to.
+  string gcs_output = 1;
 }
