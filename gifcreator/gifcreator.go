@@ -1,17 +1,17 @@
 package main
 
 import (
+	"encoding/json"
 	"flag"
 	"fmt"
+	"image"
+	"image/gif"
 	"log"
 	"net"
 	"os"
 	"strconv"
 	"strings"
 	"time"
-	"encoding/json"
-	"image"
-	"image/gif"
 
 	"gopkg.in/redis.v5"
 
@@ -19,23 +19,23 @@ import (
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 
-	"cloud.google.com/go/trace"
 	"cloud.google.com/go/storage"
+	"cloud.google.com/go/trace"
 
 	"google.golang.org/api/iterator"
 )
 
 type server struct{}
 
-type renderJob struct{
-	Status					pb.GetJobResponse_Status
-	FinalImagePath	string
+type renderJob struct {
+	Status         pb.GetJobResponse_Status
+	FinalImagePath string
 }
 
-type renderTask struct{
-	Frame	 					int64
-	Caption					string
-	ProductType			pb.Product
+type renderTask struct {
+	Frame       int64
+	Caption     string
+	ProductType pb.Product
 }
 
 var (
@@ -43,7 +43,7 @@ var (
 	renderClient  pb.RenderClient
 	workerMode    = flag.Bool("worker", false, "run in worker mode rather than server")
 	traceClient   *trace.Client
-	gcsBucketName	string
+	gcsBucketName string
 )
 
 func (server) StartJob(ctx context.Context, req *pb.StartJobRequest) (*pb.StartJobResponse, error) {
@@ -55,8 +55,8 @@ func (server) StartJob(ctx context.Context, req *pb.StartJobRequest) (*pb.StartJ
 	jobIdStr := strconv.FormatInt(jobId, 10)
 
 	// Create a new RenderJob queue for that job
-  var job = renderJob{
-		Status:	pb.GetJobResponse_PENDING,
+	var job = renderJob{
+		Status: pb.GetJobResponse_PENDING,
 	}
 	payload, _ := json.Marshal(job)
 	err = redisClient.Set("job_gifjob_"+jobIdStr, payload, 0).Err()
@@ -68,10 +68,10 @@ func (server) StartJob(ctx context.Context, req *pb.StartJobRequest) (*pb.StartJ
 	var taskId int64
 	for i := 0; i < 3; i++ {
 		// Set up render request for each frame
-    var task = renderTask{
-			Frame: 				int64(i),
-			ProductType: 	req.ProductToPlug,
-			Caption:			req.Name,
+		var task = renderTask{
+			Frame:       int64(i),
+			ProductType: req.ProductToPlug,
+			Caption:     req.Name,
 		}
 
 		//Get new task id
@@ -123,26 +123,26 @@ func leaseNextTask() error {
 	taskIdStr := strs[1]
 	//taskId, _ := strconv.ParseInt(taskIdStr, 10, 64)
 
-	payload, err := redisClient.Get("task_gifjob_"+jobIdStr+"_"+taskIdStr).Result()
+	payload, err := redisClient.Get("task_gifjob_" + jobIdStr + "_" + taskIdStr).Result()
 	if err != nil {
 		return err
 	}
 	fmt.Fprintf(os.Stdout, "leased gifjob_%s %s\n", jobString, payload)
 
 	var task renderTask
-  err = json.Unmarshal([]byte(payload), &task)
+	err = json.Unmarshal([]byte(payload), &task)
 	if err != nil {
 		return err
 	}
 
 	span := traceClient.NewSpan("/requestrender") // TODO(jbd): make /memcreate top-level span optional
 	defer span.Finish()
-  outputPrefix := "out."+jobIdStr
-	outputBasePath := "gs://"+gcsBucketName+"/"+outputPrefix
+	outputPrefix := "out." + jobIdStr
+	outputBasePath := "gs://" + gcsBucketName + "/" + outputPrefix
 	req := &pb.RenderRequest{
 		GcsOutputBase: outputBasePath,
-		ImgPath:   "gs://"+gcsBucketName+"/assets/gopher.png", // TODO: parameterize from job
-		Frame:     task.Frame,
+		ImgPath:       "gs://" + gcsBucketName + "/assets/gopher.png", // TODO: parameterize from job
+		Frame:         task.Frame,
 	}
 	_, err =
 		renderClient.RenderFrame(trace.NewContext(context.Background(), span), req)
@@ -179,7 +179,7 @@ func leaseNextTask() error {
 		}
 		fmt.Fprintf(os.Stdout, "final image path: %s\n", finalImagePath)
 		var job = renderJob{
-			Status:	pb.GetJobResponse_DONE,
+			Status:         pb.GetJobResponse_DONE,
 			FinalImagePath: finalImagePath,
 		}
 		payloadBytes, _ := json.Marshal(job)
@@ -202,22 +202,22 @@ func compileGifs(prefix string) (string, error) {
 	ctx := context.Background()
 	gcsClient, err := storage.NewClient(ctx)
 	if err != nil {
-	    return "", err
+		return "", err
 	}
 	it := gcsClient.Bucket(gcsBucketName).Objects(ctx, &storage.Query{Prefix: prefix, Versions: false})
 	finalGif := &gif.GIF{}
 	for {
-    objAttrs, err := it.Next()
+		objAttrs, err := it.Next()
 		fmt.Fprintf(os.Stdout, "DEBUG bucket %s prefix %s attrs %v\n", gcsBucketName, prefix, objAttrs)
-    if err == iterator.Done {
-        break
-    }
-    if err != nil {
-        return "", err
-    }
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			return "", err
+		}
 		rc, err := gcsClient.Bucket(objAttrs.Bucket).Object(objAttrs.Name).NewReader(ctx)
 		if err != nil {
-		    return "", err
+			return "", err
 		}
 		frameImg, err := gif.Decode(rc)
 		if err != nil {
@@ -225,10 +225,10 @@ func compileGifs(prefix string) (string, error) {
 		}
 		rc.Close()
 		finalGif.Image = append(finalGif.Image, frameImg.(*image.Paletted))
-  	finalGif.Delay = append(finalGif.Delay, 0)
+		finalGif.Delay = append(finalGif.Delay, 0)
 	}
 
-  finalObjName := prefix+"/animated.gif"
+	finalObjName := prefix + "/animated.gif"
 	finalObj := gcsClient.Bucket(gcsBucketName).Object(finalObjName)
 	wc := finalObj.NewWriter(ctx)
 
@@ -242,11 +242,11 @@ func compileGifs(prefix string) (string, error) {
 
 	// Make the final image public
 	if err := finalObj.ACL().Set(ctx, storage.AllUsers, storage.RoleReader); err != nil {
-	    return "", err
+		return "", err
 	}
 
 	// Return GCS URI to the public image (sans the protcol)
-	return gcsBucketName+".storage.googleapis.com/"+finalObjName, nil
+	return gcsBucketName + ".storage.googleapis.com/" + finalObjName, nil
 }
 
 func (server) GetJob(ctx context.Context, req *pb.GetJobRequest) (*pb.GetJobResponse, error) {
@@ -256,7 +256,7 @@ func (server) GetJob(ctx context.Context, req *pb.GetJobRequest) (*pb.GetJobResp
 		return nil, err
 	}
 	fmt.Fprintf(os.Stdout, "status of gifjob_%s is %s\n", req.JobId, statusStr)
-  err = json.Unmarshal([]byte(statusStr), &job)
+	err = json.Unmarshal([]byte(statusStr), &job)
 	if err != nil {
 		return nil, err
 	}
@@ -278,7 +278,7 @@ func main() {
 	projectID := os.Getenv("GOOGLE_PROJECT_ID")
 	renderName := os.Getenv("RENDER_NAME")
 	renderPort := os.Getenv("RENDER_PORT")
-  renderHostAddr := renderName+":"+renderPort
+	renderHostAddr := renderName + ":" + renderPort
 
 	gcsBucketName = os.Getenv("GCS_BUCKET_NAME")
 

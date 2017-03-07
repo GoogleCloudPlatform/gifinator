@@ -2,39 +2,39 @@ package main
 
 import (
 	"fmt"
-	"image/png"
 	"image/gif"
+	"image/png"
 	"log"
 	"net"
 	"os"
 	"strconv"
 
+	"cloud.google.com/go/storage"
+	"github.com/GoogleCloudPlatform/k8s-render-demo/internal/gcsref"
 	pb "github.com/GoogleCloudPlatform/k8s-render-demo/proto"
 	"github.com/anthonynsimon/bild/transform"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
-	"cloud.google.com/go/storage"
-	"github.com/GoogleCloudPlatform/k8s-render-demo/internal/gcsref"
 )
 
 type server struct{}
 
 var (
-	gcsClient	*storage.Client
+	gcsClient *storage.Client
 )
 
 func (server) RenderFrame(ctx context.Context, req *pb.RenderRequest) (*pb.RenderResponse, error) {
 	gcsClient, err := storage.NewClient(ctx)
 	if err != nil {
-	    return nil, err
+		return nil, err
 	}
 
 	fmt.Fprintf(os.Stdout, "starting render job - object: %s, frame: %d\n", req.ImgPath, req.Frame)
 
-  gcsImageImportObj, err := gcsref.Parse(req.ImgPath)
+	gcsImageImportObj, err := gcsref.Parse(req.ImgPath)
 	rc, err := gcsClient.Bucket(string(gcsImageImportObj.Bucket)).Object(gcsImageImportObj.Name).NewReader(ctx)
 	if err != nil {
-	    return nil, err
+		return nil, err
 	}
 	defer rc.Close()
 
@@ -47,7 +47,7 @@ func (server) RenderFrame(ctx context.Context, req *pb.RenderRequest) (*pb.Rende
 	rotated := transform.Rotate(img, deg, nil)
 
 	// TODO: store in GCS
-	tempPath := os.TempDir()+"/"+fmt.Sprintf("%s%.0f", "/image_", deg)
+	tempPath := os.TempDir() + "/" + fmt.Sprintf("%s%.0f", "/image_", deg)
 	file, err := os.Create(tempPath)
 	if err != nil {
 		return nil, err
@@ -55,13 +55,13 @@ func (server) RenderFrame(ctx context.Context, req *pb.RenderRequest) (*pb.Rende
 	defer file.Close()
 
 	// Save in GCS
-  gcsPath := fmt.Sprintf("%s.image_%.0f.gif", req.GcsOutputBase, deg)
+	gcsPath := fmt.Sprintf("%s.image_%.0f.gif", req.GcsOutputBase, deg)
 	gcsFinalImageObj, err := gcsref.Parse(gcsPath)
 	wc := gcsClient.Bucket(string(gcsFinalImageObj.Bucket)).Object(gcsFinalImageObj.Name).NewWriter(ctx)
 	defer wc.Close()
 
 	var opt gif.Options
-  opt.NumColors = 256
+	opt.NumColors = 256
 
 	wc.ObjectAttrs.ContentType = "image/gif"
 
