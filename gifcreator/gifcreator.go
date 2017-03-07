@@ -10,6 +10,8 @@ import (
 	"strings"
 	"time"
 	"encoding/json"
+	"image"
+	"image/gif"
 
 	"gopkg.in/redis.v5"
 
@@ -18,6 +20,9 @@ import (
 	"google.golang.org/grpc"
 
 	"cloud.google.com/go/trace"
+	"cloud.google.com/go/storage"
+
+	"google.golang.org/api/iterator"
 )
 
 type server struct{}
@@ -31,9 +36,6 @@ type renderTask struct{
 	Frame	 					int64
 	Caption					string
 	ProductType			pb.Product
-	Status					pb.GetJobResponse_Status
-  LeasedTime			time.Time
-	FinalImagePath	string
 }
 
 var (
@@ -44,16 +46,19 @@ var (
 )
 
 func (server) StartJob(ctx context.Context, req *pb.StartJobRequest) (*pb.StartJobResponse, error) {
-	// TODO(jessup) this should be stored as a job in Redis
-
 	// Retrieive the next job ID from Redis
 	jobId, err := redisClient.Incr("gifjob_counter").Result()
 	if err != nil {
 		return nil, err
 	}
 	jobIdStr := strconv.FormatInt(jobId, 10)
+
 	// Create a new RenderJob queue for that job
-	err = redisClient.Set("job_gifjob_"+jobIdStr, "PENDING", 0).Err()
+  var job = renderJob{
+		Status:	pb.GetJobResponse_PENDING,
+	}
+	payload, _ := json.Marshal(job)
+	err = redisClient.Set("job_gifjob_"+jobIdStr, payload, 0).Err()
 	if err != nil {
 		return nil, err
 	}
@@ -66,7 +71,6 @@ func (server) StartJob(ctx context.Context, req *pb.StartJobRequest) (*pb.StartJ
 			Frame: 				int64(i),
 			ProductType: 	req.ProductToPlug,
 			Caption:			req.Name,
-			Status:				pb.GetJobResponse_PENDING,
 		}
 
 		//Get new task id
@@ -76,8 +80,7 @@ func (server) StartJob(ctx context.Context, req *pb.StartJobRequest) (*pb.StartJ
 		}
 		taskIdStr := strconv.FormatInt(taskId, 10)
 
-		fmt.Fprintf(os.Stdout, "DEBUG caption %s\n", task.Caption)
-		payload, err := json.Marshal(task)
+		payload, err = json.Marshal(task)
 		if err != nil {
 			return nil, err
 		}
@@ -133,9 +136,12 @@ func leaseNextTask() error {
 
 	span := traceClient.NewSpan("/requestrender") // TODO(jbd): make /memcreate top-level span optional
 	defer span.Finish()
+	bucketName := "jessup-spinnaker-test-k8srenderdemo" // TODO(jessup) should be configurable
+  outputPrefix := "out."+jobIdStr
+	outputBasePath := "gs://"+bucketName+"/"+outputPrefix
 	req := &pb.RenderRequest{
-		GcsOutputBase: "gs://jessup-spinnaker-test-k8srenderdemo/out."+jobIdStr,
-		ImgPath:   "gs://jessup-spinnaker-test-k8srenderdemo/assets/gopher.png", // TODO: parameterize from job
+		GcsOutputBase: outputBasePath,
+		ImgPath:   "gs://"+bucketName+"/assets/gopher.png", // TODO: parameterize from job
 		Frame:     task.Frame,
 	}
 	_, err =
@@ -167,7 +173,17 @@ func leaseNextTask() error {
 	queueLengthInt, _ := strconv.ParseInt(queueLength, 10, 64)
 	fmt.Fprintf(os.Stdout, "job_gifjob_%s : %d of %d tasks done\n", jobIdStr, completedTaskCount, queueLengthInt)
 	if completedTaskCount == queueLengthInt {
-		err = redisClient.Set("job_gifjob_"+jobIdStr, "DONE", 0).Err()
+		finalImagePath, err := compileGifs(bucketName, outputPrefix)
+		if err != nil {
+			return err
+		}
+		fmt.Fprintf(os.Stdout, "final image path: %s\n", finalImagePath)
+		var job = renderJob{
+			Status:	pb.GetJobResponse_DONE,
+			FinalImagePath: finalImagePath,
+		}
+		payloadBytes, _ := json.Marshal(job)
+		err = redisClient.Set("job_gifjob_"+jobIdStr, payloadBytes, 0).Err()
 		if err != nil {
 			return err
 		}
@@ -177,23 +193,74 @@ func leaseNextTask() error {
 	return nil
 }
 
+/**
+ * compileGifs() will glob all GCS objects prefixed with importPath, and
+ * stitch them together into an animated GIF, store that in GCS and return the
+ * path of the final image
+ */
+func compileGifs(bucketName string, prefix string) (string, error) {
+	ctx := context.Background()
+	gcsClient, err := storage.NewClient(ctx)
+	if err != nil {
+	    return "", err
+	}
+	it := gcsClient.Bucket(bucketName).Objects(ctx, &storage.Query{Prefix: prefix, Versions: false})
+	finalGif := &gif.GIF{}
+	for {
+    objAttrs, err := it.Next()
+		fmt.Fprintf(os.Stdout, "DEBUG bucket %s prefix %s attrs %v\n", bucketName, prefix, objAttrs)
+    if err == iterator.Done {
+        break
+    }
+    if err != nil {
+        return "", err
+    }
+		rc, err := gcsClient.Bucket(objAttrs.Bucket).Object(objAttrs.Name).NewReader(ctx)
+		if err != nil {
+		    return "", err
+		}
+		frameImg, err := gif.Decode(rc)
+		if err != nil {
+			return "", err
+		}
+		rc.Close()
+		finalGif.Image = append(finalGif.Image, frameImg.(*image.Paletted))
+  	finalGif.Delay = append(finalGif.Delay, 0)
+	}
+
+  finalObjName := prefix+"/animated.gif"
+	finalObj := gcsClient.Bucket(bucketName).Object(finalObjName)
+	wc := finalObj.NewWriter(ctx)
+
+	wc.ObjectAttrs.ContentType = "image/gif"
+	fmt.Fprintf(os.Stdout, "starting writing final: %s\n", finalObjName)
+	err = gif.EncodeAll(wc, finalGif)
+	if err != nil {
+		return "", err
+	}
+	wc.Close()
+
+	// Make the final image public
+	if err := finalObj.ACL().Set(ctx, storage.AllUsers, storage.RoleReader); err != nil {
+	    return "", err
+	}
+
+	// Return GCS URI to the public image (sans the protcol)
+	return bucketName+".storage.googleapis.com/"+finalObjName, nil
+}
+
 func (server) GetJob(ctx context.Context, req *pb.GetJobRequest) (*pb.GetJobResponse, error) {
-	// TODO(jessup) look this up from a Reids service
-	var status pb.GetJobResponse_Status
+	var job renderJob
 	statusStr, err := redisClient.Get("job_gifjob_" + string(req.JobId)).Result()
 	if err != nil {
 		return nil, err
 	}
 	fmt.Fprintf(os.Stdout, "status of gifjob_%s is %s\n", req.JobId, statusStr)
-	switch statusStr {
-	case "PENDING":
-		status = pb.GetJobResponse_PENDING
-	case "DONE":
-		status = pb.GetJobResponse_DONE
-	default:
-		status = pb.GetJobResponse_UNKNOWN_STATUS
+  err = json.Unmarshal([]byte(statusStr), &job)
+	if err != nil {
+		return nil, err
 	}
-	response := pb.GetJobResponse{ImageUrl: "", Status: status}
+	response := pb.GetJobResponse{ImageUrl: job.FinalImagePath, Status: job.Status}
 	return &response, nil
 }
 

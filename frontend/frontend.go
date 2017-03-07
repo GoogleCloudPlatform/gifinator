@@ -128,6 +128,11 @@ func renderForm(w http.ResponseWriter, errors []string) {
 	}
 }
 
+type responsePageData struct{
+	ImageId	 string
+	ImageUrl string
+}
+
 func handleGif(w http.ResponseWriter, r *http.Request) {
 	pathSegments := strings.Split(r.URL.Path, "/")
 	if len(pathSegments) < 2 {
@@ -136,13 +141,36 @@ func handleGif(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// TODO(jessup) Look up to see if the gif has loaded. If not, show the Spinner.
+	response, err :=
+		gcClient.GetJob(
+			context.Background(),
+			&pb.GetJobRequest{JobId: pathSegments[2]})
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "cannot get status of gif - %v", err)
+		return
+	}
 
-	formPath := filepath.Join(templatePath, "spinner.html")
+	var bodyHtmlPath string
+	var gifInfo = responsePageData{
+		ImageId: pathSegments[2],
+	}
+  switch(response.Status) {
+	case pb.GetJobResponse_PENDING:
+		bodyHtmlPath = filepath.Join(templatePath, "spinner.html")
+		break;
+	case pb.GetJobResponse_DONE:
+		bodyHtmlPath = filepath.Join(templatePath, "gif.html")
+		gifInfo.ImageUrl = response.ImageUrl
+		break;
+	default:
+		bodyHtmlPath = filepath.Join(templatePath, "error.html")
+		break;
+	}
 	layoutPath := filepath.Join(templatePath, "layout.html")
 
-	t, err := template.ParseFiles(layoutPath, formPath)
+	t, err := template.ParseFiles(layoutPath, bodyHtmlPath)
 	if err == nil {
-		t.ExecuteTemplate(w, "layout", pathSegments[2])
+		t.ExecuteTemplate(w, "layout", gifInfo)
 	} else {
 		http.Error(w, err.Error(), 500)
 	}
