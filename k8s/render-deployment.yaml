@@ -1,0 +1,22 @@
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: render-deployment
+spec:
+  replicas: 2 # tells deployment to run 2 pods matching the template
+  template: # create pods using pod definition in this template
+    metadata:
+      labels:
+        app: render
+    spec:
+      containers:
+      - name: render
+        image: gcr.io/jessup-spinnaker-test/gifcreator:latest # TODO(jessup) Ideally this is dynamic
+        command: ["/render"]
+        env:
+        - name: RENDER_PORT
+          value: "12080"
+        - name: GOOGLE_PROJECT_ID
+          value: "jessup-spinnaker-test" # TODO(jessup) Ideally this is dynamic
+        ports:
+        - containerPort: 12080 # TODO(jessup) figure out how to use this in config

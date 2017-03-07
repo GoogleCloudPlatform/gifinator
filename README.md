@@ -16,7 +16,8 @@ You will also need to install the [Google Cloud SDK](https://cloud.google.com/sd
 and deploy to Kubernetes.
 
 You will also need to have created a Google Cloud Storage bucket, for exclusive
-use by the application.
+use by the application. If you plan to deploy to GKE, it is suggested to
+create your bucket in the same project.
 
 To run and test locally, you will also need to have Redis installed and running.
 

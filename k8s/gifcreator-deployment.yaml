@@ -53,7 +53,13 @@ spec:
           value: "6379"
         - name: REDIS_NAME
           value: "redis-master"
+        - name: RENDER_NAME
+          value: "render"
+        - name: RENDER_PORT
+          value: "12080"
         - name: GOOGLE_PROJECT_ID
           value: "jessup-spinnaker-test" # TODO(jessup) Ideally this is dynamic
+        - name: GCS_BUCKET_NAME
+          value: "jessup-spinnaker-test-k8srenderdemo" # Configure this
         ports:
         - containerPort: 11080 # TODO(jessup) figure out how to use this in config

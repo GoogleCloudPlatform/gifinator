@@ -1,4 +1,4 @@
-FROM alpine
+FROM ubuntu:trusty
 
 COPY ./gopath/bin/frontend /frontend
 COPY ./gopath/bin/gifcreator /gifcreator
