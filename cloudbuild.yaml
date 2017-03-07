@@ -1,7 +1,6 @@
 steps:
 # Bring in dependencies with `glide install`
 - name: 'gcr.io/cloud-builders/glide'
-#  dir: 'glide'
   env: ['PROJECT_ROOT=github.com/GoogleCloudPlatform/k8s-render-demo']
   args: ['install', '.']
 # Install and test the Go components
@@ -15,4 +14,4 @@ steps:
 # Add static files
 - name: 'gcr.io/cloud-builders/docker'
   args: ['build', '--tag=gcr.io/$PROJECT_ID/gifcreator', '.']
-images: 'gcr.io/$PROJECT_ID/gifcreator'
+images: ['gcr.io/$PROJECT_ID/gifcreator']
