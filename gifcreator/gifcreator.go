@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"encoding/json"
 
 	"gopkg.in/redis.v5"
 
@@ -20,6 +21,20 @@ import (
 )
 
 type server struct{}
+
+type renderJob struct{
+	Status					pb.GetJobResponse_Status
+	FinalImagePath	string
+}
+
+type renderTask struct{
+	Frame	 					int64
+	Caption					string
+	ProductType			pb.Product
+	Status					pb.GetJobResponse_Status
+  LeasedTime			time.Time
+	FinalImagePath	string
+}
 
 var (
 	redisClient  *redis.Client
@@ -45,25 +60,36 @@ func (server) StartJob(ctx context.Context, req *pb.StartJobRequest) (*pb.StartJ
 
 	// Add tasks to the GifJob queue for each frame to render
 	var taskId int64
-	var taskIdStr string
-	for i := 0; i < 36; i++ {
+	for i := 0; i < 3; i++ {
+		// Set up render request for each frame
+    var task = renderTask{
+			Frame: 				int64(i),
+			ProductType: 	req.ProductToPlug,
+			Caption:			req.Name,
+			Status:				pb.GetJobResponse_PENDING,
+		}
+
 		//Get new task id
 		taskId, err = redisClient.Incr("counter_queued_gifjob_" + jobIdStr).Result()
 		if err != nil {
 			return nil, err
 		}
-		taskIdStr = strconv.FormatInt(taskId, 10)
-		//SET gifjob_JOBID:TASK_ID with serialized pb.RenderRequest
-		err = redisClient.Set("task_gifjob_"+jobIdStr+"_"+taskIdStr, "will_be_serialized", 0).Err()
+		taskIdStr := strconv.FormatInt(taskId, 10)
+
+		fmt.Fprintf(os.Stdout, "DEBUG caption %s\n", task.Caption)
+		payload, err := json.Marshal(task)
 		if err != nil {
 			return nil, err
 		}
-		//LPUSH "gifjob_JOBID_queued" "TASK_ID"
+		err = redisClient.Set("task_gifjob_"+jobIdStr+"_"+taskIdStr, payload, 0).Err()
+		if err != nil {
+			return nil, err
+		}
 		err = redisClient.LPush("gifjob_queued", jobIdStr+"_"+taskIdStr).Err()
 		if err != nil {
 			return nil, err
 		}
-		fmt.Fprintf(os.Stdout, "enqueued gifjob_%s_%s\n", jobIdStr, taskIdStr)
+		fmt.Fprintf(os.Stdout, "enqueued gifjob_%s_%s %s\n", jobIdStr, taskIdStr, payload)
 	}
 
 	// Return job ID
@@ -91,24 +117,26 @@ func leaseNextTask() error {
 	strs := strings.Split(jobString, "_")
 	jobIdStr := strs[0]
 	taskIdStr := strs[1]
-	taskId, _ := strconv.ParseInt(taskIdStr, 10, 64)
+	//taskId, _ := strconv.ParseInt(taskIdStr, 10, 64)
 
-	payload, err := redisClient.Get("task_gifjob_" + jobString).Result()
+	payload, err := redisClient.Get("task_gifjob_"+jobIdStr+"_"+taskIdStr).Result()
 	if err != nil {
 		return err
 	}
 	fmt.Fprintf(os.Stdout, "leased gifjob_%s %s\n", jobString, payload)
 
-	// DO WORK
+	var task renderTask
+  err = json.Unmarshal([]byte(payload), &task)
+	if err != nil {
+		return err
+	}
 
-	// TODO(jessup) Actually de-serialize the payload and translate into
-	// tasks for the API.
 	span := traceClient.NewSpan("/requestrender") // TODO(jbd): make /memcreate top-level span optional
 	defer span.Finish()
 	req := &pb.RenderRequest{
-		GcsOutputBase: os.TempDir(),
-		ImgPath:   "/render/gopher.png", // TODO: something real
-		Frame:     taskId,
+		GcsOutputBase: "gs://jessup-spinnaker-test-k8srenderdemo/out."+jobIdStr,
+		ImgPath:   "gs://jessup-spinnaker-test-k8srenderdemo/assets/gopher.png", // TODO: parameterize from job
+		Frame:     task.Frame,
 	}
 	_, err =
 		renderClient.RenderFrame(trace.NewContext(context.Background(), span), req)

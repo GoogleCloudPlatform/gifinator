@@ -2,8 +2,8 @@ package main
 
 import (
 	"fmt"
-	"image"
 	"image/png"
+	"image/gif"
 	"log"
 	"net"
 	"os"
@@ -13,19 +13,32 @@ import (
 	"github.com/anthonynsimon/bild/transform"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
+	"cloud.google.com/go/storage"
+	"github.com/GoogleCloudPlatform/k8s-render-demo/internal/gcsref"
 )
 
 type server struct{}
 
+var (
+	gcsClient	*storage.Client
+)
+
 func (server) RenderFrame(ctx context.Context, req *pb.RenderRequest) (*pb.RenderResponse, error) {
-	// TODO: read file from GCS
-	wdPath, _ := os.Getwd()
-	r, err := os.Open(wdPath+req.ImgPath)
+	gcsClient, err := storage.NewClient(ctx)
 	if err != nil {
-		return nil, err
+	    return nil, err
 	}
-	defer r.Close()
-	img, _, err := image.Decode(r)
+
+	fmt.Fprintf(os.Stdout, "starting render job - object: %s, frame: %d\n", req.ImgPath, req.Frame)
+
+  gcsImageImportObj, err := gcsref.Parse(req.ImgPath)
+	rc, err := gcsClient.Bucket(string(gcsImageImportObj.Bucket)).Object(gcsImageImportObj.Name).NewReader(ctx)
+	if err != nil {
+	    return nil, err
+	}
+	defer rc.Close()
+
+	img, err := png.Decode(rc)
 	if err != nil {
 		return nil, err
 	}
@@ -34,17 +47,27 @@ func (server) RenderFrame(ctx context.Context, req *pb.RenderRequest) (*pb.Rende
 	rotated := transform.Rotate(img, deg, nil)
 
 	// TODO: store in GCS
-	tempPath := req.GcsOutputBase+fmt.Sprintf("%s%.0f", "/image_", deg)
+	tempPath := os.TempDir()+"/"+fmt.Sprintf("%s%.0f", "/image_", deg)
 	file, err := os.Create(tempPath)
 	if err != nil {
-		// TODO: response?
 		return nil, err
 	}
 	defer file.Close()
 
-	err = png.Encode(file, rotated)
+	// Save in GCS
+  gcsPath := fmt.Sprintf("%s.image_%.0f.gif", req.GcsOutputBase, deg)
+	gcsFinalImageObj, err := gcsref.Parse(gcsPath)
+	wc := gcsClient.Bucket(string(gcsFinalImageObj.Bucket)).Object(gcsFinalImageObj.Name).NewWriter(ctx)
+	defer wc.Close()
+
+	var opt gif.Options
+  opt.NumColors = 256
+
+	wc.ObjectAttrs.ContentType = "image/gif"
+
+	fmt.Fprintf(os.Stdout, "starting writing frame: %s, frame: %d\n", gcsPath, req.Frame)
+	err = gif.Encode(wc, rotated, &opt)
 	if err != nil {
-		// TODO: response?
 		return nil, err
 	}
 
@@ -57,11 +80,13 @@ func main() {
 	i, err := strconv.Atoi(serving_port)
 	if (err != nil) || (i < 1) {
 		log.Fatalf("please set env var RENDER_PORT to a valid port")
+		return
 	}
 
 	l, err := net.Listen("tcp", ":"+serving_port)
 	if err != nil {
 		log.Fatalf("listen failed: %v", err)
+		return
 	}
 	srv := grpc.NewServer()
 	pb.RegisterRenderServer(srv, server{})

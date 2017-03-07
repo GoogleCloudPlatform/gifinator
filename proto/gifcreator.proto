@@ -35,6 +35,7 @@ message GetJobResponse {
     UNKNOWN_STATUS = 0;
     PENDING = 1;
     DONE = 2;
+    FAILED = 3;
   };
 
   Status status = 1;
