@@ -24,6 +24,8 @@ spec:
           value: "redis-master"
         - name: GOOGLE_PROJECT_ID
           value: "jessup-spinnaker-test" # TODO(jessup) Ideally this is dynamic
+        - name: GCS_BUCKET_NAME
+          value: "jessup-spinnaker-test-k8srenderdemo" # Configure this
         ports:
         - containerPort: 11080 # TODO(jessup) figure out how to use this in config
 ---

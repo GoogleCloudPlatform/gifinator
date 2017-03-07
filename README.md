@@ -15,6 +15,9 @@ go get github.com/mattn/goreman
 You will also need to install the [Google Cloud SDK](https://cloud.google.com/sdk/downloads) to build
 and deploy to Kubernetes.
 
+You will also need to have created a Google Cloud Storage bucket, for exclusive
+use by the application.
+
 To run and test locally, you will also need to have Redis installed and running.
 
 ### Building Locally
@@ -64,6 +67,10 @@ This will build and push the image to `gcr.io/YOUR_PROJECT_ID/gifcreator`
 
 First create a Kubernetes cluster and make sure `kubectl` is installed and configured
 to talk to it.
+
+Configure the files in the `k8s` directory as appropriate. Mainly this will mean
+adjusting the value of the `GOOGLE_PROJECT_ID` and `GCS_BUCKET_NAME` to something
+appropriate for your usage.
 
 To deploy the three services, and Redis, to the cluster for the first time, run:
 ```bash
