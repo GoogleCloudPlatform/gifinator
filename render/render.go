@@ -8,42 +8,23 @@ import (
 	"net"
 	"os"
 	"strconv"
-	"strings"
 
 	"cloud.google.com/go/storage"
-	"cloud.google.com/go/trace"
 	"github.com/GoogleCloudPlatform/k8s-render-demo/internal/gcsref"
 	pb "github.com/GoogleCloudPlatform/k8s-render-demo/proto"
 	"github.com/anthonynsimon/bild/transform"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/metadata"
 )
 
 type server struct{}
 
-const serviceName = "render"
-
 var (
-	gcsClient 	 *storage.Client
-	deploymentId string
-	traceClient	 *trace.Client
+	gcsClient *storage.Client
 )
 
 func (server) RenderFrame(ctx context.Context, req *pb.RenderRequest) (*pb.RenderResponse, error) {
-	md, _ := metadata.FromContext(ctx)
-  parentSpan := traceClient.SpanFromHeader(
-    "frontend.handleForm", strings.Join(md["trace_header"], ""),
-  )
-	span := parentSpan.NewChild("render.RenderFrame")
-	span.SetLabel("service", serviceName)
-	span.SetLabel("version", deploymentId)
-	defer span.Finish()
-
-
-  tCtx := trace.NewContext(ctx, span)
-
-	gcsClient, err := storage.NewClient(tCtx)
+	gcsClient, err := storage.NewClient(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -51,7 +32,7 @@ func (server) RenderFrame(ctx context.Context, req *pb.RenderRequest) (*pb.Rende
 	fmt.Fprintf(os.Stdout, "starting render job - object: %s, frame: %d\n", req.ImgPath, req.Frame)
 
 	gcsImageImportObj, err := gcsref.Parse(req.ImgPath)
-	rc, err := gcsClient.Bucket(string(gcsImageImportObj.Bucket)).Object(gcsImageImportObj.Name).NewReader(tCtx)
+	rc, err := gcsClient.Bucket(string(gcsImageImportObj.Bucket)).Object(gcsImageImportObj.Name).NewReader(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -76,7 +57,7 @@ func (server) RenderFrame(ctx context.Context, req *pb.RenderRequest) (*pb.Rende
 	// Save in GCS
 	gcsPath := fmt.Sprintf("%s.image_%.0f.gif", req.GcsOutputBase, deg)
 	gcsFinalImageObj, err := gcsref.Parse(gcsPath)
-	wc := gcsClient.Bucket(string(gcsFinalImageObj.Bucket)).Object(gcsFinalImageObj.Name).NewWriter(tCtx)
+	wc := gcsClient.Bucket(string(gcsFinalImageObj.Bucket)).Object(gcsFinalImageObj.Name).NewWriter(ctx)
 	defer wc.Close()
 
 	var opt gif.Options
@@ -101,15 +82,6 @@ func main() {
 		log.Fatalf("please set env var RENDER_PORT to a valid port")
 		return
 	}
-	projectId := os.Getenv("GOOGLE_PROJECT_ID")
-	deploymentId = os.Getenv("DEPLOYMENT_ID")
-
-	ctx := context.Background()
-	tc, err := trace.NewClient(ctx, projectId, trace.EnableGRPCTracing)
-	if err != nil {
-		log.Fatal(err)
-	}
-	traceClient = tc
 
 	l, err := net.Listen("tcp", ":"+serving_port)
 	if err != nil {

@@ -18,15 +18,12 @@ import (
 	pb "github.com/GoogleCloudPlatform/k8s-render-demo/proto"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/metadata"
 
 	"cloud.google.com/go/storage"
 	"cloud.google.com/go/trace"
 
 	"google.golang.org/api/iterator"
 )
-
-const serviceName = "gifcreator"
 
 type server struct{}
 
@@ -39,29 +36,17 @@ type renderTask struct {
 	Frame       int64
 	Caption     string
 	ProductType pb.Product
-	TraceId			string
 }
 
 var (
 	redisClient   *redis.Client
 	renderClient  pb.RenderClient
-	deploymentId	string
 	workerMode    = flag.Bool("worker", false, "run in worker mode rather than server")
 	traceClient   *trace.Client
 	gcsBucketName string
 )
 
 func (server) StartJob(ctx context.Context, req *pb.StartJobRequest) (*pb.StartJobResponse, error) {
-	md, _ := metadata.FromContext(ctx)
-  parentSpan := traceClient.SpanFromHeader(
-    "frontend.handleForm", strings.Join(md["trace_header"], ""),
-  )
-	fmt.Fprintf(os.Stdout, "found trace ID %s\n", md["trace_header"])
-	span := parentSpan.NewChild("gifcreator.StartJob")
-	span.SetLabel("service", serviceName)
-	span.SetLabel("version", deploymentId)
-	defer span.Finish()
-
 	// Retrieive the next job ID from Redis
 	jobId, err := redisClient.Incr("gifjob_counter").Result()
 	if err != nil {
@@ -87,7 +72,6 @@ func (server) StartJob(ctx context.Context, req *pb.StartJobRequest) (*pb.StartJ
 			Frame:       int64(i),
 			ProductType: req.ProductToPlug,
 			Caption:     req.Name,
-			TraceId:     parentSpan.TraceID(),
 		}
 
 		//Get new task id
@@ -151,14 +135,8 @@ func leaseNextTask() error {
 		return err
 	}
 
-  // Extract parent trace info information from message
-  parentSpan := traceClient.SpanFromHeader("create_gif", task.TraceId+"/SPAN_ID;o=TRACE_TRUE")
-	span := parentSpan.NewChild("gifCreator.leaseNextTask")
-	span.SetLabel("service", serviceName)
-	span.SetLabel("version", deploymentId)
-	tCtx := trace.NewContext(context.Background(), span)
+	span := traceClient.NewSpan("/requestrender") // TODO(jbd): make /memcreate top-level span optional
 	defer span.Finish()
-
 	outputPrefix := "out." + jobIdStr
 	outputBasePath := "gs://" + gcsBucketName + "/" + outputPrefix
 	req := &pb.RenderRequest{
@@ -167,7 +145,7 @@ func leaseNextTask() error {
 		Frame:         task.Frame,
 	}
 	_, err =
-		renderClient.RenderFrame(tCtx, req)
+		renderClient.RenderFrame(trace.NewContext(context.Background(), span), req)
 
 	if err != nil {
 		// TODO(jessup) Swap these out for proper logging
@@ -195,7 +173,7 @@ func leaseNextTask() error {
 	queueLengthInt, _ := strconv.ParseInt(queueLength, 10, 64)
 	fmt.Fprintf(os.Stdout, "job_gifjob_%s : %d of %d tasks done\n", jobIdStr, completedTaskCount, queueLengthInt)
 	if completedTaskCount == queueLengthInt {
-		finalImagePath, err := compileGifs(outputPrefix, tCtx)
+		finalImagePath, err := compileGifs(outputPrefix)
 		if err != nil {
 			return err
 		}
@@ -209,7 +187,6 @@ func leaseNextTask() error {
 		if err != nil {
 			return err
 		}
-		parentSpan.Finish()
 		fmt.Fprintf(os.Stdout, "completed job_gifjob_%s : %d tasks\n", jobIdStr, completedTaskCount)
 	}
 
@@ -221,12 +198,13 @@ func leaseNextTask() error {
  * stitch them together into an animated GIF, store that in GCS and return the
  * path of the final image
  */
-func compileGifs(prefix string, tCtx context.Context) (string, error) {
-	gcsClient, err := storage.NewClient(tCtx)
+func compileGifs(prefix string) (string, error) {
+	ctx := context.Background()
+	gcsClient, err := storage.NewClient(ctx)
 	if err != nil {
 		return "", err
 	}
-	it := gcsClient.Bucket(gcsBucketName).Objects(tCtx, &storage.Query{Prefix: prefix, Versions: false})
+	it := gcsClient.Bucket(gcsBucketName).Objects(ctx, &storage.Query{Prefix: prefix, Versions: false})
 	finalGif := &gif.GIF{}
 	for {
 		objAttrs, err := it.Next()
@@ -237,7 +215,7 @@ func compileGifs(prefix string, tCtx context.Context) (string, error) {
 		if err != nil {
 			return "", err
 		}
-		rc, err := gcsClient.Bucket(objAttrs.Bucket).Object(objAttrs.Name).NewReader(tCtx)
+		rc, err := gcsClient.Bucket(objAttrs.Bucket).Object(objAttrs.Name).NewReader(ctx)
 		if err != nil {
 			return "", err
 		}
@@ -252,7 +230,7 @@ func compileGifs(prefix string, tCtx context.Context) (string, error) {
 
 	finalObjName := prefix + "/animated.gif"
 	finalObj := gcsClient.Bucket(gcsBucketName).Object(finalObjName)
-	wc := finalObj.NewWriter(tCtx)
+	wc := finalObj.NewWriter(ctx)
 
 	wc.ObjectAttrs.ContentType = "image/gif"
 	fmt.Fprintf(os.Stdout, "starting writing final: %s\n", finalObjName)
@@ -263,7 +241,7 @@ func compileGifs(prefix string, tCtx context.Context) (string, error) {
 	wc.Close()
 
 	// Make the final image public
-	if err := finalObj.ACL().Set(tCtx, storage.AllUsers, storage.RoleReader); err != nil {
+	if err := finalObj.ACL().Set(ctx, storage.AllUsers, storage.RoleReader); err != nil {
 		return "", err
 	}
 
@@ -272,11 +250,6 @@ func compileGifs(prefix string, tCtx context.Context) (string, error) {
 }
 
 func (server) GetJob(ctx context.Context, req *pb.GetJobRequest) (*pb.GetJobResponse, error) {
-	span := traceClient.NewSpan("gifCreator.GetJob") // TODO(jbd): make /memcreate top-level span optional
-	span.SetLabel("service", serviceName)
-	span.SetLabel("version", deploymentId)
-	defer span.Finish()
-
 	var job renderJob
 	statusStr, err := redisClient.Get("job_gifjob_" + string(req.JobId)).Result()
 	if err != nil {
@@ -306,7 +279,7 @@ func main() {
 	renderName := os.Getenv("RENDER_NAME")
 	renderPort := os.Getenv("RENDER_PORT")
 	renderHostAddr := renderName + ":" + renderPort
-  deploymentId = os.Getenv("DEPLOYMENT_ID")
+
 	gcsBucketName = os.Getenv("GCS_BUCKET_NAME")
 
 	redisClient = redis.NewClient(&redis.Options{
@@ -319,7 +292,8 @@ func main() {
 		// Worker mode will perpetually poll the queue and lease tasks
 		fmt.Fprintf(os.Stdout, "starting gifcreator in worker mode\n")
 
-		traceClient, err = trace.NewClient(context.Background(), projectID, trace.EnableGRPCTracing)
+		ctx := context.Background()
+		traceClient, err = trace.NewClient(ctx, projectID, trace.EnableGRPCTracing)
 		if err != nil {
 			log.Fatal(err)
 		}
