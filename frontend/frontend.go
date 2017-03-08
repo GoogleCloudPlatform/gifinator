@@ -16,12 +16,15 @@ import (
 	"google.golang.org/grpc"
 )
 
+const serviceName = "frontend"
+
 // TODO(jessup) remove globals in favor of appContext
 var (
 	templatePath string
 	staticPath   string
 	projectID    string // Google Console Project ID
 	port         string
+	deploymentId string
 
 	gcClient    pb.GifCreatorClient
 	traceClient *trace.Client
@@ -35,7 +38,7 @@ func main() {
 	port = os.Getenv("FRONTEND_PORT")
 	gifcreatorPort := os.Getenv("GIFCREATOR_PORT")
 	gifcreatorName := os.Getenv("GIFCREATOR_NAME")
-
+  deploymentId = os.Getenv("DEPLOYMENT_ID")
 	// TODO(jessup): check env vars for correctnesss
 
 	fs := http.FileServer(http.Dir(staticPath))
@@ -68,6 +71,14 @@ func main() {
 }
 
 func handleForm(w http.ResponseWriter, r *http.Request) {
+	parentSpan := traceClient.NewSpan("create_gif") // TODO(jbd): make /memcreate top-level span optional
+	span := parentSpan.NewChild("frontend.handleForm")
+	fmt.Fprintf(os.Stderr, "fe trace contexts: parent %s child %s", parentSpan.TraceID(), span.TraceID())
+	span.SetLabel("version", deploymentId)
+	span.SetLabel("service", serviceName)
+	defer span.Finish()
+	tCtx := trace.NewContext(context.Background(),span)
+
 	if r.Method == "POST" {
 		// Get the form info, verify, and pass on
 		var formErrors = []string{}
@@ -98,16 +109,15 @@ func handleForm(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		// Submit answers, get task ID, and redirect...
-		span := traceClient.NewSpan("/memecreate") // TODO(jbd): make /memcreate top-level span optional
-		defer span.Finish()
+		span.SetLabel("mascot", string(pb.Product_GO))
 		response, err :=
-			gcClient.StartJob(trace.NewContext(context.Background(), span),
-				&pb.StartJobRequest{Name: gifName, ProductToPlug: mascotType})
+			gcClient.StartJob(tCtx, &pb.StartJobRequest{Name: gifName, ProductToPlug: mascotType})
 		if err != nil {
 			// TODO(jessup) Swap these out for proper logging
 			fmt.Fprintf(os.Stderr, "cannot request Gif - %v", err)
 			return
 		}
+		parentSpan.SetLabel("job_id", response.JobId)
 		http.Redirect(w, r, "/gif/"+response.JobId, 301)
 		return
 	}
@@ -134,16 +144,20 @@ type responsePageData struct {
 }
 
 func handleGif(w http.ResponseWriter, r *http.Request) {
+	span := traceClient.NewSpan("frontend.handleGif") // TODO(jbd): make /memcreate top-level span optional
+	span.SetLabel("service", serviceName)
+	span.SetLabel("version", deploymentId)
+	defer span.Finish()
+
 	pathSegments := strings.Split(r.URL.Path, "/")
 	if len(pathSegments) < 2 {
 		http.Error(w, "Can't find the GIF ID", 404)
 		return
 	}
 
-	// TODO(jessup) Look up to see if the gif has loaded. If not, show the Spinner.
 	response, err :=
 		gcClient.GetJob(
-			context.Background(),
+			trace.NewContext(context.Background(), span),
 			&pb.GetJobRequest{JobId: pathSegments[2]})
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "cannot get status of gif - %v", err)
@@ -177,6 +191,11 @@ func handleGif(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleGifStatus(w http.ResponseWriter, r *http.Request) {
+	span := traceClient.NewSpan("frontend.handleGifStatus") // TODO(jbd): make /memcreate top-level span optional
+	span.SetLabel("service", serviceName)
+	span.SetLabel("version", deploymentId)
+	defer span.Finish()
+
 	pathSegments := strings.Split(r.URL.Path, "/")
 	if len(pathSegments) < 2 {
 		http.Error(w, "Can't find the GIF ID", 404)
@@ -186,7 +205,7 @@ func handleGifStatus(w http.ResponseWriter, r *http.Request) {
 	// TODO(jessup) Need stronger input validation here.
 	response, err :=
 		gcClient.GetJob(
-			context.Background(),
+			trace.NewContext(context.Background(), span),
 			&pb.GetJobRequest{JobId: pathSegments[2]})
 	if err != nil {
 		// TODO(jessup) Swap these out for proper logging
