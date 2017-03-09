@@ -9,13 +9,6 @@ imports:
   - internal/optional
   - storage
   - trace
-- name: github.com/anthonynsimon/bild
-  version: 35fd1904d43f809ded0959922164885e25577aa2
-  subpackages:
-  - clone
-  - math/f64
-  - parallel
-  - transform
 - name: github.com/fogleman/pt
   version: 2f17d1447e10ff8fef7cda25f119e8e656121cf6
   subpackages:

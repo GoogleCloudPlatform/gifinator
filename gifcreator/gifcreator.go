@@ -7,6 +7,7 @@ import (
 	"image"
 	"image/gif"
 	"image/png"
+	"io/ioutil"
 	"log"
 	"net"
 	"os"
@@ -14,10 +15,12 @@ import (
 	"strings"
 	"time"
 	"bytes"
+	"text/template"
 
 	"gopkg.in/redis.v5"
 
 	pb "github.com/GoogleCloudPlatform/k8s-render-demo/proto"
+	"github.com/GoogleCloudPlatform/k8s-render-demo/internal/gcsref"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 
@@ -51,6 +54,30 @@ var (
 	gcsBucketName string
 )
 
+func transform(inputPath string, jobId string) (bytes.Buffer, error) {
+	var transformed bytes.Buffer
+	tmpl, err := template.ParseFiles(inputPath)
+	if err != nil {
+		return transformed, err
+	}
+  err = tmpl.Execute(&transformed, jobId)
+	if err != nil {
+		return transformed, err
+	}
+	return transformed, nil
+}
+
+func upload(outBytes []byte, outputPath string, mimeType string, client *storage.Client, ctx context.Context) error {
+	obj, _ := gcsref.Parse(outputPath)
+	wc := client.Bucket(string(obj.Bucket)).Object(obj.Name).NewWriter(ctx)
+	wc.ObjectAttrs.ContentType = mimeType
+	defer wc.Close()
+	if _, err := wc.Write(outBytes); err != nil {
+		return err
+	}
+	return nil
+}
+
 func (server) StartJob(ctx context.Context, req *pb.StartJobRequest) (*pb.StartJobResponse, error) {
 	span := traceClient.NewSpan("gifcreator.StartJob")
 	span.SetLabel("service", serviceName)
@@ -74,11 +101,55 @@ func (server) StartJob(ctx context.Context, req *pb.StartJobRequest) (*pb.StartJ
 		return nil, err
 	}
 
+  gcsClient, err := storage.NewClient(ctx)
+
+  var productString string
+	switch(req.ProductToPlug){
+	case pb.Product_GRPC:
+		productString = "grpc"
+		break
+	case pb.Product_KUBERNETES:
+		productString = "k8s"
+		break
+	default:
+		productString = "gopher"
+	}
+
 	// Generate the assets needed to render the frame, and push them to GCS
+	t, err := transform("gifcreator/scene/"+productString+".obj.tmpl", jobIdStr)
+	if err != nil {
+		return nil, err
+	}
+	err = upload(t.Bytes(),
+		"gs://" + gcsBucketName + "/job_"+jobIdStr+".obj",
+		"binary/octet-stream", gcsClient, ctx)
+	if err != nil {
+		return nil, err
+	}
+	t, err = transform("gifcreator/scene/"+productString+".mtl.tmpl", jobIdStr)
+	if err != nil {
+		return nil, err
+	}
+	err = upload(t.Bytes(),
+		"gs://" + gcsBucketName + "/job_"+jobIdStr+".mtl",
+		"binary/octet-stream", gcsClient, ctx)
+	if err != nil {
+		return nil, err
+	}
+	bytes, err := ioutil.ReadFile("gifcreator/scene/gcp_next_badge.png")
+	if err != nil {
+		return nil, err
+	}
+	err = upload(bytes,
+		"gs://" + gcsBucketName + "/job_"+jobIdStr+"_badge.png",
+	  "image/png", gcsClient, ctx)
+	if err != nil {
+		return nil, err
+	}
 
 	// Add tasks to the GifJob queue for each frame to render
 	var taskId int64
-	for i := 0; i < 1; i++ {
+	for i := 0; i < 3; i++ {
 		// Set up render request for each frame
 		var task = renderTask{
 			Frame:       int64(i),
@@ -155,12 +226,14 @@ func leaseNextTask() error {
 	outputBasePath := "gs://" + gcsBucketName + "/" + outputPrefix
 	req := &pb.RenderRequest{
 		GcsOutputBase: outputBasePath,
-		ObjPath: "gs://jessup-spinnaker-test-k8srenderdemo/gopher.obj.tmpl",
+		ObjPath: "gs://" + gcsBucketName + "/job_"+jobIdStr+".obj",
 		Assets: []string{
-			"gs://jessup-spinnaker-test-k8srenderdemo/gopher.mtl.tmpl",
-			"gs://jessup-spinnaker-test-k8srenderdemo/gcp_next_badge.png",
+			"gs://" + gcsBucketName + "/job_"+jobIdStr+".mtl",
+			"gs://" + gcsBucketName + "/job_"+jobIdStr+"_badge.png",
+			"gs://" + gcsBucketName + "/k8s.png",
+			"gs://" + gcsBucketName + "/grpc.png",
 		},
-		Rotation: 30,
+		Rotation: float32(task.Frame*2+20),
 		Iterations: 1,
 	}
 	_, err =

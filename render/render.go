@@ -44,7 +44,7 @@ func cacheGcsObject(ctx context.Context, obj gcsref.Object) (string, error) {
     return "", err
   }
   fmt.Fprintf(os.Stdout, "writing file %q", localFilepath)
-  err = ioutil.WriteFile(localFilepath, slurp, 777)
+  err = ioutil.WriteFile(localFilepath, slurp, 0777)
   if err != nil {
 		fmt.Fprintf(os.Stderr, "error while writing file %q: %v", localFilepath, err)
 		return "", err
