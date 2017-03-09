@@ -72,17 +72,18 @@ func renderImage(objectPath string, rotation float64, iterations int32) (string,
 		return "", err
 	}
 
-	mesh.Transform(pt.Rotate(pt.V(0, 1, 0), pt.Radians(rotation)))
+	mesh.Transform(pt.Rotate(pt.V(0, 1, 0), pt.Radians(-10)))
 	mesh.SmoothNormals()
 	mesh.FitInside(pt.Box{pt.V(-1, 0, -1), pt.V(1, 2, 1)}, pt.V(0.5, 0, 0.5))
+	mesh.Transform(pt.Rotate(pt.V(0, 1, 0), pt.Radians(rotation)))
 	scene.Add(mesh)
 
 	// position camera
-	camera := pt.LookAt(pt.V(4, 1, 0), pt.V(0, 0.9, 0), pt.V(0, 1, 0), rotation)
+	camera := pt.LookAt(pt.V(4, 1, 0), pt.V(0, 0.9, 0), pt.V(0, 1, 0), 35)
 
 	// render the scene
 	sampler := pt.NewSampler(16, 16)
-	renderer := pt.NewRenderer(&scene, &camera, sampler, 300, 300)
+	renderer := pt.NewRenderer(&scene, &camera, sampler, 500, 500)
 
   // TODO(jessup) Fix this for better entropy
 	imagePath := os.TempDir() + "/final_img_itr_%d_" + strconv.FormatInt(int64(rand.Intn(10000)), 16) + ".png"

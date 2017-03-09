@@ -24,6 +24,7 @@ import (
 	"google.golang.org/grpc"
   "golang.org/x/image/font/gofont/gobold"
 	"github.com/golang/freetype"
+	"github.com/bradfitz/slice"
 
 	"cloud.google.com/go/storage"
 	"cloud.google.com/go/trace"
@@ -322,9 +323,21 @@ func compileGifs(prefix string, tCtx context.Context) (string, error) {
 		return "", err
 	}
 	it := gcsClient.Bucket(gcsBucketName).Objects(tCtx, &storage.Query{Prefix: prefix, Versions: false})
-	finalGif := &gif.GIF{}
+	// Results from GCS are unordered, so pull the list into memory and sort it
+  var orderedObjects []storage.ObjectAttrs
 	for {
-		objAttrs, err := it.Next()
+		obj, err := it.Next()
+		if err == iterator.Done {
+			break
+		}
+		orderedObjects = append(orderedObjects, *obj)
+	}
+	slice.Sort(orderedObjects[:], func(i, j int) bool {
+    return orderedObjects[i].Name < orderedObjects[j].Name
+  })
+
+	finalGif := &gif.GIF{}
+	for _, objAttrs := range orderedObjects {
 		fmt.Fprintf(os.Stdout, "DEBUG bucket %s prefix %s attrs %v\n", gcsBucketName, prefix, objAttrs)
 		if err == iterator.Done {
 			break

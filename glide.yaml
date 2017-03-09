@@ -23,3 +23,7 @@ import:
   - font/basicfont
   - math/fixed
 - package: github.com/golang/freetype
+- package: github.com/bradfitz/slice
+- package: go4.org
+  subpackages:
+  - reflectutil

@@ -1,5 +1,5 @@
-hash: 596095cd0fdc39f1d6c2296cd36f4f0d56e6eb471c42425e4d2dbef8c43493f1
-updated: 2017-03-09T19:37:48.89466153Z
+hash: 482763ce61e8d0b8e929c7b032f7ea95707887e9e0ff5250815fd67a55870217
+updated: 2017-03-09T20:56:48.823334202Z
 imports:
 - name: cloud.google.com/go
   version: c7e7950fdf36db7a14a59fab0513981a6f26ad2e
@@ -9,25 +9,33 @@ imports:
   - internal/optional
   - storage
   - trace
+- name: github.com/bradfitz/slice
+  version: d9036e2120b5ddfa53f3ebccd618c4af275f47da
 - name: github.com/fogleman/pt
   version: 2f17d1447e10ff8fef7cda25f119e8e656121cf6
   subpackages:
   - pt
 - name: github.com/golang/freetype
   version: d9be45aaf7452cc30c0ceb1b1bf7efe1d17b7c87
+  subpackages:
+  - raster
+  - truetype
 - name: github.com/golang/protobuf
   version: 69b215d01a5606c843240eab4937eab3acee6530
   subpackages:
   - proto
 - name: github.com/googleapis/gax-go
   version: da06d194a00e19ce00d9011a13931c3f6f6887c7
+- name: go4.org
+  version: 7ce08ca145dbe0e66a127c447b80ee7914f3e4f9
+  subpackages:
+  - reflectutil
 - name: golang.org/x/image
   version: 069db1da13841f750892417d97b1b059aec960cd
   subpackages:
   - font
   - font/basicfont
   - font/gofont/gobold
-  - font/inconsolata
   - math/fixed
 - name: golang.org/x/net
   version: d379faa25cbdc04d653984913a2ceb43b0bc46d7
