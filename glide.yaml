@@ -18,3 +18,8 @@ import:
 - package: github.com/fogleman/pt
   subpackages:
   - pt
+- package: golang.org/x/image
+  subpackages:
+  - font/basicfont
+  - math/fixed
+- package: github.com/golang/freetype

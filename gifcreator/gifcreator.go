@@ -7,7 +7,6 @@ import (
 	"image"
 	"image/gif"
 	"image/png"
-	"io/ioutil"
 	"log"
 	"net"
 	"os"
@@ -23,6 +22,8 @@ import (
 	"github.com/GoogleCloudPlatform/k8s-render-demo/internal/gcsref"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
+  "golang.org/x/image/font/gofont/gobold"
+	"github.com/golang/freetype"
 
 	"cloud.google.com/go/storage"
 	"cloud.google.com/go/trace"
@@ -76,6 +77,24 @@ func upload(outBytes []byte, outputPath string, mimeType string, client *storage
 		return err
 	}
 	return nil
+}
+
+func addLabel(img *image.NRGBA, x, y int, label string) error {
+	  fontSize := float64(120)
+		f, err := freetype.ParseFont(gobold.TTF)
+		if err != nil {
+			return err
+		}
+		c := freetype.NewContext()
+		c.SetDPI(float64(72))
+		c.SetFont(f)
+		c.SetFontSize(fontSize)
+		c.SetClip(img.Bounds())
+		c.SetDst(img)
+		c.SetSrc(img)
+		pt := freetype.Pt(x, y+int(c.PointToFixed(fontSize)>>6))
+		_, err = c.DrawString(label, pt)
+		return err
 }
 
 func (server) StartJob(ctx context.Context, req *pb.StartJobRequest) (*pb.StartJobResponse, error) {
@@ -136,11 +155,18 @@ func (server) StartJob(ctx context.Context, req *pb.StartJobRequest) (*pb.StartJ
 	if err != nil {
 		return nil, err
 	}
-	bytes, err := ioutil.ReadFile("gifcreator/scene/gcp_next_badge.png")
+	badgeFile, err := os.Open("gifcreator/scene/gcp_next_badge.png")
 	if err != nil {
 		return nil, err
 	}
-	err = upload(bytes,
+	badgeImg, err := png.Decode(badgeFile)
+	if err != nil {
+		return nil, err
+	}
+	addLabel(badgeImg.(*image.NRGBA), 90, 120, req.Name)
+	buf := new(bytes.Buffer)
+  err = png.Encode(buf, badgeImg)
+	err = upload(buf.Bytes(),
 		"gs://" + gcsBucketName + "/job_"+jobIdStr+"_badge.png",
 	  "image/png", gcsClient, ctx)
 	if err != nil {

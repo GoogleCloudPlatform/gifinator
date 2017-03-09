@@ -1,5 +1,5 @@
-hash: d488dd4e687a9ef4fc13e9bd441379bc3cc3e1eb53d40daab03e0a33963bf735
-updated: 2017-03-09T07:41:25.798228556Z
+hash: 596095cd0fdc39f1d6c2296cd36f4f0d56e6eb471c42425e4d2dbef8c43493f1
+updated: 2017-03-09T19:37:48.89466153Z
 imports:
 - name: cloud.google.com/go
   version: c7e7950fdf36db7a14a59fab0513981a6f26ad2e
@@ -13,16 +13,22 @@ imports:
   version: 2f17d1447e10ff8fef7cda25f119e8e656121cf6
   subpackages:
   - pt
+- name: github.com/golang/freetype
+  version: d9be45aaf7452cc30c0ceb1b1bf7efe1d17b7c87
 - name: github.com/golang/protobuf
   version: 69b215d01a5606c843240eab4937eab3acee6530
   subpackages:
   - proto
 - name: github.com/googleapis/gax-go
   version: da06d194a00e19ce00d9011a13931c3f6f6887c7
-- name: github.com/harlow/grpc-google-cloud-trace
-  version: 50cddeb62ce6e510266986eb28297a136782babd
+- name: golang.org/x/image
+  version: 069db1da13841f750892417d97b1b059aec960cd
   subpackages:
-  - intercept
+  - font
+  - font/basicfont
+  - font/gofont/gobold
+  - font/inconsolata
+  - math/fixed
 - name: golang.org/x/net
   version: d379faa25cbdc04d653984913a2ceb43b0bc46d7
   subpackages:
