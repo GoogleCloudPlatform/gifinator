@@ -7,7 +7,6 @@ Package renderdemo is a generated protocol buffer package.
 
 It is generated from these files:
 	proto/gifcreator.proto
-	proto/movie.proto
 	proto/render.proto
 
 It has these top-level messages:
@@ -15,8 +14,6 @@ It has these top-level messages:
 	StartJobResponse
 	GetJobRequest
 	GetJobResponse
-	MakeMovieRequest
-	MakeMovieResponse
 	RenderRequest
 	RenderResponse
 */

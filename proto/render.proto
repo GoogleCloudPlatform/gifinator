@@ -12,15 +12,16 @@ message RenderRequest {
   // GCS path to write output image into.
   string gcs_output_base = 1;
 
-  // Product logo image to transform, stored locally.
-  // TODO(shadams): pull image from elsewhere, making render
-  // more reusable.
-  string img_path = 2;
+  // scene object file (in .obj format) GCS path
+  string obj_path = 2;
+  // assets (like material files and images) to be associated with the object
+  repeated string assets = 3;
 
-  // Frame number (in range [0,36))
-  int64 frame = 3;
+  // scene rotation (in radians)
+  float rotation = 4;
 
-  // TODO(light): scene description
+  // num iterations
+  int32 iterations = 5;
 }
 
 message RenderResponse {

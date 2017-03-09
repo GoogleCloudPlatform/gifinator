@@ -5,7 +5,7 @@ all:
 
 proto: proto/gifcreator.pb.go proto/movie.pb.go proto/render.pb.go
 
-proto/gifcreator.pb.go proto/movie.pb.go proto/render.pb.go: proto/gifcreator.proto proto/movie.proto proto/render.proto
+proto/gifcreator.pb.go proto/movie.pb.go proto/render.pb.go: proto/gifcreator.proto proto/render.proto
 	protoc $^ --go_out=plugins=grpc:.
 
 clean:

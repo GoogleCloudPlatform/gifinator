@@ -6,12 +6,14 @@ import (
 	"fmt"
 	"image"
 	"image/gif"
+	"image/png"
 	"log"
 	"net"
 	"os"
 	"strconv"
 	"strings"
 	"time"
+	"bytes"
 
 	"gopkg.in/redis.v5"
 
@@ -24,6 +26,8 @@ import (
 
 	"google.golang.org/api/iterator"
 )
+
+const serviceName = "gifcreator"
 
 type server struct{}
 
@@ -41,12 +45,18 @@ type renderTask struct {
 var (
 	redisClient   *redis.Client
 	renderClient  pb.RenderClient
+	deploymentId	string
 	workerMode    = flag.Bool("worker", false, "run in worker mode rather than server")
 	traceClient   *trace.Client
 	gcsBucketName string
 )
 
 func (server) StartJob(ctx context.Context, req *pb.StartJobRequest) (*pb.StartJobResponse, error) {
+	span := traceClient.NewSpan("gifcreator.StartJob")
+	span.SetLabel("service", serviceName)
+	span.SetLabel("version", deploymentId)
+	defer span.Finish()
+
 	// Retrieive the next job ID from Redis
 	jobId, err := redisClient.Incr("gifjob_counter").Result()
 	if err != nil {
@@ -64,9 +74,11 @@ func (server) StartJob(ctx context.Context, req *pb.StartJobRequest) (*pb.StartJ
 		return nil, err
 	}
 
+	// Generate the assets needed to render the frame, and push them to GCS
+
 	// Add tasks to the GifJob queue for each frame to render
 	var taskId int64
-	for i := 0; i < 3; i++ {
+	for i := 0; i < 1; i++ {
 		// Set up render request for each frame
 		var task = renderTask{
 			Frame:       int64(i),
@@ -110,6 +122,11 @@ func leaseNextTask() error {
 	 * processing queue. If this process crashes during processing then a garbage
 	 * collector could move the task back into the 'queueing' queue.
 	 */
+	span := traceClient.NewSpan("gifCreator.leaseNextTask")
+ 	span.SetLabel("service", serviceName)
+ 	span.SetLabel("version", deploymentId)
+ 	tCtx := trace.NewContext(context.Background(), span)
+ 	defer span.Finish()
 
 	jobString, err := redisClient.BRPopLPush("gifjob_queued", "gifjob_processing", 0).Result()
 	if err != nil {
@@ -121,7 +138,6 @@ func leaseNextTask() error {
 	strs := strings.Split(jobString, "_")
 	jobIdStr := strs[0]
 	taskIdStr := strs[1]
-	//taskId, _ := strconv.ParseInt(taskIdStr, 10, 64)
 
 	payload, err := redisClient.Get("task_gifjob_" + jobIdStr + "_" + taskIdStr).Result()
 	if err != nil {
@@ -135,17 +151,20 @@ func leaseNextTask() error {
 		return err
 	}
 
-	span := traceClient.NewSpan("/requestrender") // TODO(jbd): make /memcreate top-level span optional
-	defer span.Finish()
 	outputPrefix := "out." + jobIdStr
 	outputBasePath := "gs://" + gcsBucketName + "/" + outputPrefix
 	req := &pb.RenderRequest{
 		GcsOutputBase: outputBasePath,
-		ImgPath:       "gs://" + gcsBucketName + "/assets/gopher.png", // TODO: parameterize from job
-		Frame:         task.Frame,
+		ObjPath: "gs://jessup-spinnaker-test-k8srenderdemo/gopher.obj.tmpl",
+		Assets: []string{
+			"gs://jessup-spinnaker-test-k8srenderdemo/gopher.mtl.tmpl",
+			"gs://jessup-spinnaker-test-k8srenderdemo/gcp_next_badge.png",
+		},
+		Rotation: 30,
+		Iterations: 1,
 	}
 	_, err =
-		renderClient.RenderFrame(trace.NewContext(context.Background(), span), req)
+		renderClient.RenderFrame(tCtx, req)
 
 	if err != nil {
 		// TODO(jessup) Swap these out for proper logging
@@ -173,7 +192,7 @@ func leaseNextTask() error {
 	queueLengthInt, _ := strconv.ParseInt(queueLength, 10, 64)
 	fmt.Fprintf(os.Stdout, "job_gifjob_%s : %d of %d tasks done\n", jobIdStr, completedTaskCount, queueLengthInt)
 	if completedTaskCount == queueLengthInt {
-		finalImagePath, err := compileGifs(outputPrefix)
+		finalImagePath, err := compileGifs(outputPrefix, tCtx)
 		if err != nil {
 			return err
 		}
@@ -198,13 +217,12 @@ func leaseNextTask() error {
  * stitch them together into an animated GIF, store that in GCS and return the
  * path of the final image
  */
-func compileGifs(prefix string) (string, error) {
-	ctx := context.Background()
-	gcsClient, err := storage.NewClient(ctx)
+func compileGifs(prefix string, tCtx context.Context) (string, error) {
+	gcsClient, err := storage.NewClient(tCtx)
 	if err != nil {
 		return "", err
 	}
-	it := gcsClient.Bucket(gcsBucketName).Objects(ctx, &storage.Query{Prefix: prefix, Versions: false})
+	it := gcsClient.Bucket(gcsBucketName).Objects(tCtx, &storage.Query{Prefix: prefix, Versions: false})
 	finalGif := &gif.GIF{}
 	for {
 		objAttrs, err := it.Next()
@@ -215,22 +233,34 @@ func compileGifs(prefix string) (string, error) {
 		if err != nil {
 			return "", err
 		}
-		rc, err := gcsClient.Bucket(objAttrs.Bucket).Object(objAttrs.Name).NewReader(ctx)
+		rc, err := gcsClient.Bucket(objAttrs.Bucket).Object(objAttrs.Name).NewReader(tCtx)
 		if err != nil {
 			return "", err
 		}
-		frameImg, err := gif.Decode(rc)
+		fmt.Fprintf(os.Stdout, "DEBUG decoding bucket %s object %s\n", objAttrs.Bucket, objAttrs.Name)
+		framePng, err := png.Decode(rc)
 		if err != nil {
 			return "", err
 		}
+
+    var gifBuf bytes.Buffer
+		var opt gif.Options
+	  opt.NumColors = 256
+		err = gif.Encode(&gifBuf, framePng, &opt)
+
+		frameGif, err := gif.Decode(&gifBuf)
+		if err != nil {
+			return "", err
+		}
+
 		rc.Close()
-		finalGif.Image = append(finalGif.Image, frameImg.(*image.Paletted))
+		finalGif.Image = append(finalGif.Image, frameGif.(*image.Paletted))
 		finalGif.Delay = append(finalGif.Delay, 0)
 	}
 
 	finalObjName := prefix + "/animated.gif"
 	finalObj := gcsClient.Bucket(gcsBucketName).Object(finalObjName)
-	wc := finalObj.NewWriter(ctx)
+	wc := finalObj.NewWriter(tCtx)
 
 	wc.ObjectAttrs.ContentType = "image/gif"
 	fmt.Fprintf(os.Stdout, "starting writing final: %s\n", finalObjName)
@@ -241,7 +271,7 @@ func compileGifs(prefix string) (string, error) {
 	wc.Close()
 
 	// Make the final image public
-	if err := finalObj.ACL().Set(ctx, storage.AllUsers, storage.RoleReader); err != nil {
+	if err := finalObj.ACL().Set(tCtx, storage.AllUsers, storage.RoleReader); err != nil {
 		return "", err
 	}
 
@@ -250,6 +280,11 @@ func compileGifs(prefix string) (string, error) {
 }
 
 func (server) GetJob(ctx context.Context, req *pb.GetJobRequest) (*pb.GetJobResponse, error) {
+	span := traceClient.NewSpan("gifCreator.GetJob") // TODO(jbd): make /memcreate top-level span optional
+	span.SetLabel("service", serviceName)
+	span.SetLabel("version", deploymentId)
+	defer span.Finish()
+
 	var job renderJob
 	statusStr, err := redisClient.Get("job_gifjob_" + string(req.JobId)).Result()
 	if err != nil {
@@ -279,7 +314,7 @@ func main() {
 	renderName := os.Getenv("RENDER_NAME")
 	renderPort := os.Getenv("RENDER_PORT")
 	renderHostAddr := renderName + ":" + renderPort
-
+  deploymentId = os.Getenv("DEPLOYMENT_ID")
 	gcsBucketName = os.Getenv("GCS_BUCKET_NAME")
 
 	redisClient = redis.NewClient(&redis.Options{
@@ -292,8 +327,7 @@ func main() {
 		// Worker mode will perpetually poll the queue and lease tasks
 		fmt.Fprintf(os.Stdout, "starting gifcreator in worker mode\n")
 
-		ctx := context.Background()
-		traceClient, err = trace.NewClient(ctx, projectID, trace.EnableGRPCTracing)
+		traceClient, err = trace.NewClient(context.Background(), projectID, trace.EnableGRPCTracing)
 		if err != nil {
 			log.Fatal(err)
 		}
