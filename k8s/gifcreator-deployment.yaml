@@ -13,7 +13,7 @@ spec:
     spec:
       containers:
       - name: gifcreator-server
-        image: gcr.io/jessup-spinnaker-test/gifcreator:latest # TODO(jessup) Ideally this is dynamic
+        image: gcr.io/jessup-spinnaker-test/gifcreator:d29d90c2-8001-40aa-b665-e489c2d67c74 # TODO(jessup) Ideally this is dynamic
         command: ["/gifcreator"]
         env:
         - name: GIFCREATOR_PORT
@@ -34,7 +34,7 @@ kind: Deployment
 metadata:
   name: gifcreator-worker-deployment
 spec:
-  replicas: 2 # tells deployment to run 2 pods matching the template
+  replicas: 20 # tells deployment to run 2 pods matching the template
   template: # create pods using pod definition in this template
     metadata:
       # unlike pod-nginx.yaml, the name is not included in the meta data as a unique name is
@@ -44,7 +44,7 @@ spec:
     spec:
       containers:
       - name: gifcreator-worker
-        image: gcr.io/jessup-spinnaker-test/gifcreator:latest # TODO(jessup) Ideally this is dynamic
+        image: gcr.io/jessup-spinnaker-test/gifcreator:d29d90c2-8001-40aa-b665-e489c2d67c74 # TODO(jessup) Ideally this is dynamic
         command: ["/gifcreator", "-worker"]
         env:
         - name: GIFCREATOR_PORT

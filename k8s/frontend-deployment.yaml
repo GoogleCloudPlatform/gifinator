@@ -13,7 +13,7 @@ spec:
     spec:
       containers:
       - name: frontend
-        image: gcr.io/jessup-spinnaker-test/gifcreator:latest # TODO(jessup) Ideally this is dynamic
+        image: gcr.io/jessup-spinnaker-test/gifcreator:d29d90c2-8001-40aa-b665-e489c2d67c74
         command: ["/frontend"]
         env:
         - name: FRONTEND_PORT
