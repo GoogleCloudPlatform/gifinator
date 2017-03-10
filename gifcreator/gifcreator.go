@@ -50,6 +50,7 @@ type renderTask struct {
 var (
 	redisClient   *redis.Client
 	renderClient  pb.RenderClient
+	scenePath			string
 	deploymentId	string
 	workerMode    = flag.Bool("worker", false, "run in worker mode rather than server")
 	traceClient   *trace.Client
@@ -136,7 +137,7 @@ func (server) StartJob(ctx context.Context, req *pb.StartJobRequest) (*pb.StartJ
 	}
 
 	// Generate the assets needed to render the frame, and push them to GCS
-	t, err := transform("gifcreator/scene/"+productString+".obj.tmpl", jobIdStr)
+	t, err := transform(scenePath+"/"+productString+".obj.tmpl", jobIdStr)
 	if err != nil {
 		return nil, err
 	}
@@ -146,7 +147,7 @@ func (server) StartJob(ctx context.Context, req *pb.StartJobRequest) (*pb.StartJ
 	if err != nil {
 		return nil, err
 	}
-	t, err = transform("gifcreator/scene/"+productString+".mtl.tmpl", jobIdStr)
+	t, err = transform(scenePath+"/"+productString+".mtl.tmpl", jobIdStr)
 	if err != nil {
 		return nil, err
 	}
@@ -156,7 +157,7 @@ func (server) StartJob(ctx context.Context, req *pb.StartJobRequest) (*pb.StartJ
 	if err != nil {
 		return nil, err
 	}
-	badgeFile, err := os.Open("gifcreator/scene/gcp_next_badge.png")
+	badgeFile, err := os.Open(scenePath+"/gcp_next_badge.png")
 	if err != nil {
 		return nil, err
 	}
@@ -176,7 +177,7 @@ func (server) StartJob(ctx context.Context, req *pb.StartJobRequest) (*pb.StartJ
 
 	// Add tasks to the GifJob queue for each frame to render
 	var taskId int64
-	for i := 0; i < 3; i++ {
+	for i := 0; i < 15; i++ {
 		// Set up render request for each frame
 		var task = renderTask{
 			Frame:       int64(i),
@@ -268,7 +269,7 @@ func leaseNextTask() error {
 
 	if err != nil {
 		// TODO(jessup) Swap these out for proper logging
-		fmt.Fprintf(os.Stderr, "error requesting frame - %v", err)
+		fmt.Fprintf(os.Stderr, "error requesting frame - %v\n", err)
 		return err
 	}
 
@@ -428,6 +429,7 @@ func main() {
 	renderHostAddr := renderName + ":" + renderPort
   deploymentId = os.Getenv("DEPLOYMENT_ID")
 	gcsBucketName = os.Getenv("GCS_BUCKET_NAME")
+	scenePath = os.Getenv("SCENE_PATH")
 
 	redisClient = redis.NewClient(&redis.Options{
 		Addr:     redisName + ":" + redisPort,
