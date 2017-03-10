@@ -33,6 +33,7 @@ func cacheGcsObject(ctx context.Context, obj gcsref.Object) (string, error) {
 
 	rc, err := gcsClient.Bucket(string(obj.Bucket)).Object(obj.Name).NewReader(ctx)
 	if err != nil {
+		fmt.Fprintf(os.Stderr, "error creating reader for %s/%s %v", string(obj.Bucket), obj.Name, err)
 		return "", err
 	}
 	defer rc.Close()
@@ -43,10 +44,10 @@ func cacheGcsObject(ctx context.Context, obj gcsref.Object) (string, error) {
     fmt.Fprintf(os.Stderr, "readFile: unable to read data from bucket %q, file %q: %v", obj.Bucket, localFilepath, err)
     return "", err
   }
-  fmt.Fprintf(os.Stdout, "writing file %q", localFilepath)
+  fmt.Fprintf(os.Stdout, "writing file %q\n", localFilepath)
   err = ioutil.WriteFile(localFilepath, slurp, 0777)
   if err != nil {
-		fmt.Fprintf(os.Stderr, "error while writing file %q: %v", localFilepath, err)
+		fmt.Fprintf(os.Stderr, "error while writing file %q: %v\n", localFilepath, err)
 		return "", err
 	}
 
@@ -79,11 +80,11 @@ func renderImage(objectPath string, rotation float64, iterations int32) (string,
 	scene.Add(mesh)
 
 	// position camera
-	camera := pt.LookAt(pt.V(4, 1, 0), pt.V(0, 0.9, 0), pt.V(0, 1, 0), 35)
+	camera := pt.LookAt(pt.V(4, 1, 0), pt.V(0, 0.9, 0), pt.V(0, 1, 0), 30)
 
 	// render the scene
 	sampler := pt.NewSampler(16, 16)
-	renderer := pt.NewRenderer(&scene, &camera, sampler, 500, 500)
+	renderer := pt.NewRenderer(&scene, &camera, sampler, 300, 300)
 
   // TODO(jessup) Fix this for better entropy
 	imagePath := os.TempDir() + "/final_img_itr_%d_" + strconv.FormatInt(int64(rand.Intn(10000)), 16) + ".png"
@@ -102,6 +103,7 @@ func (server) RenderFrame(ctx context.Context, req *pb.RenderRequest) (*pb.Rende
 	objGcsObj, _ := gcsref.Parse(req.ObjPath)
   objFilepath, err := cacheGcsObject(ctx, objGcsObj)
 	if err != nil {
+		fmt.Fprintf(os.Stderr, "error caching %s, err: %v\n", req.ObjPath, err)
 		return nil, err
 	}
 
@@ -110,12 +112,16 @@ func (server) RenderFrame(ctx context.Context, req *pb.RenderRequest) (*pb.Rende
 		assetGcsObj, _ := gcsref.Parse(element)
 	  _, err := cacheGcsObject(ctx, assetGcsObj)
 		if err != nil {
+			fmt.Fprintf(os.Stderr, "error caching %s, err: %v\n", req.ObjPath, err)
 			return nil, err
 		}
 	}
 
   // Create and render a scene seeded with the object we loaded
+	fmt.Fprintf(os.Stdout, "starting actual render - object: %s, angle: %f\n", req.ObjPath, req.Rotation)
   imgPath, err := renderImage(objFilepath, float64(req.Rotation), req.Iterations)
+
+	fmt.Fprintf(os.Stdout, "finshed actual render - object: %s, angle: %f\n", req.ObjPath, req.Rotation)
 
 	// Save in GCS
 	gcsPath := fmt.Sprintf("%s.image_%.0frad.png", req.GcsOutputBase, req.Rotation)
@@ -130,10 +136,12 @@ func (server) RenderFrame(ctx context.Context, req *pb.RenderRequest) (*pb.Rende
 	// TODO(jessup) Do this iteratively to save memory
   contents, err := ioutil.ReadFile(imgPath)
 	if err != nil {
+		fmt.Fprintf(os.Stderr, "error reading file %s, err: %v\n", imgPath, err)
 		return nil, err
 	}
 
 	if _, err := wc.Write(contents); err != nil {
+		fmt.Fprintf(os.Stderr, "error writing object %s, err: %v\n", gcsFinalImageObj.Name, err)
 		return nil, err
 	}
 
