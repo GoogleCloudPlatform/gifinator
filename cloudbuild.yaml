@@ -13,5 +13,5 @@ steps:
   env: ['PROJECT_ROOT=github.com/GoogleCloudPlatform/k8s-render-demo']
 # Add static files
 - name: 'gcr.io/cloud-builders/docker'
-  args: ['build', '--tag=gcr.io/$PROJECT_ID/gifcreator', '.']
-images: ['gcr.io/$PROJECT_ID/gifcreator']
+  args: ['build', '--tag=gcr.io/$PROJECT_ID/gifcreator:$BUILD_ID', '.']
+images: ['gcr.io/$PROJECT_ID/gifcreator:$BUILD_ID']
