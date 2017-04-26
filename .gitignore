@@ -5,4 +5,5 @@ render/render
 vendor/
 .DS_Store
 Vagrantfile
+.vagrant
 .nfs*
