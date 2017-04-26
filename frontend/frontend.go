@@ -27,7 +27,7 @@ import (
 	"strings"
 
 	"cloud.google.com/go/trace"
-	pb "github.com/GoogleCloudPlatform/k8s-render-demo/proto"
+	pb "github.com/GoogleCloudPlatform/gifinator/proto"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 )

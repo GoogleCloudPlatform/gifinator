@@ -26,8 +26,8 @@ import (
 	"io/ioutil"
 
 	"cloud.google.com/go/storage"
-	"github.com/GoogleCloudPlatform/k8s-render-demo/internal/gcsref"
-	pb "github.com/GoogleCloudPlatform/k8s-render-demo/proto"
+	"github.com/GoogleCloudPlatform/gifinator/internal/gcsref"
+	pb "github.com/GoogleCloudPlatform/gifinator/proto"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"github.com/fogleman/pt/pt"

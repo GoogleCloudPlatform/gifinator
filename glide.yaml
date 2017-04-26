@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-package: github.com/GoogleCloudPlatform/k8s-render-demo
+package: github.com/GoogleCloudPlatform/gifinator
 import:
 - package: cloud.google.com/go
   version: c7e7950fdf36db7a14a59fab0513981a6f26ad2e

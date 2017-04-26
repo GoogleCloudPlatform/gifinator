@@ -1,13 +1,13 @@
 # Kubernetes Render Demo
 
-Currently assuming an import path of `github.com/GoogleCloudPlatform/k8s-render-demo`.
+Currently assuming an import path of `github.com/GoogleCloudPlatform/gifinator`.
 
 ## Building
 
 ### Prerequisites
 
 ```bash
-git clone ... $GOPATH/src/github.com/GoogleCloudPlatform/k8s-render-demo
+git clone ... $GOPATH/src/github.com/GoogleCloudPlatform/gifinator
 curl https://glide.sh/get | sh
 go get github.com/mattn/goreman
 ```
@@ -24,7 +24,7 @@ To run and test locally, you will also need to have Redis installed and running.
 ### Building Locally
 
 ```bash
-cd $GOPATH/src/github.com/GoogleCloudPlatform/k8s-render-demo
+cd $GOPATH/src/github.com/GoogleCloudPlatform/gifinator
 glide install
 make
 ```
