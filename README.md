@@ -1,10 +1,18 @@
 # Kubernetes Render Demo
 
-Currently assuming an import path of `github.com/GoogleCloudPlatform/gifinator`.
+This is a demonstration of how to build an application using Go, gRPC and Kubernetes. The application - Gifinator -
+creates 3D animated gifs for no obvious purpose (except to show how these technologies can be used together).
+
+This project is a compliment to a talk given at GCP Next 2017, for a demo and a walk-through of the application and the design choices we made, you can [watch the session on YouTube](https://www.youtube.com/watch?v=YiNt4kUnnIM).
+
+This project currently assumes an import path of `github.com/GoogleCloudPlatform/gifinator`.
 
 ## Building
 
 ### Prerequisites
+
+This project relies on [Glide](https://glide.sh) for dependency management and optionally [Goreman](https://github.com/mattn/goreman) (a clone of the popular Foreman tool, but written in Go) to
+make it easy to run the services locally for testing purposes.
 
 ```bash
 git clone ... $GOPATH/src/github.com/GoogleCloudPlatform/gifinator
