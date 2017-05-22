@@ -34,8 +34,8 @@ import (
 
 	"gopkg.in/redis.v5"
 
-	pb "github.com/GoogleCloudPlatform/k8s-render-demo/proto"
-	"github.com/GoogleCloudPlatform/k8s-render-demo/internal/gcsref"
+	pb "github.com/GoogleCloudPlatform/gifinator/proto"
+	"github.com/GoogleCloudPlatform/gifinator/internal/gcsref"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
   "golang.org/x/image/font/gofont/gobold"
